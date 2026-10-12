@@ -1,120 +1,88 @@
-# PROJECT ZERO — Desfechos e Repartidas (Alpha 0.5.0)
+# Project Zero — Balanceamento Estratégico (Alpha v0.7.0)
 
-Protótipo de estratégia global com mapa 2D, laboratório, governos autônomos, eventos causais e desfechos comparáveis, **inteiramente fictício**. O laboratório modifica coeficientes abstratos do motor; nada aqui representa ou orienta fenômenos epidemiológicos reais.
+Jogo de estratégia global em React, Vite e TypeScript, com mapa 2D, laboratório, governos autônomos, acontecimentos causais, relatório final e repartidas. Toda a simulação é **fictícia**: os indicadores de propagação são mecânicas abstratas de jogo, não modelos epidemiológicos.
 
-## Experimentar sem instalar nada
-
-Abra `preview-offline.html` no navegador (Chrome, Edge ou Firefox). O arquivo incorpora contornos, motor e interface, sem carregar scripts, dados ou fontes externas. Clique em **LABORATÓRIO ZERO** na barra lateral ou ao lado da linha do tempo; observe depois os painéis de inteligência mundial e a seção **Crônicas do Mundo**.
-
-## Jogar
-
-1. Escolha o país de origem no mapa ou seletor.
-2. Abra **Laboratório Zero**. Antes do início, atribua até **8 pontos** a quatro atributos abstratos (níveis 0–4): Propagação, Discrição, Resistência e Instabilidade. Se desejar, nomeie o protocolo.
-3. Inicie a simulação. Os atributos iniciais ficam fixos durante a partida.
-4. A cada **10 dias**, ganhe **2 pontos de evolução** e volte ao laboratório para ativar melhorias.
-5. Observe o painel dos modificadores: crescimento, conexões, reação governamental e pesquisa respondem às decisões. Algumas melhorias oferecem bônus com contrapartidas; **Rede aberta** e **Núcleo concentrado** são mutuamente exclusivas.
-6. Acompanhe a **Corrida científica & diplomacia** abaixo do gráfico global: clique em um dos cinco líderes para visualizar suas decisões e recursos no painel regional.
-7. Acompanhe **Crônicas do Mundo**: filtre eventos por todos, ativos ou país selecionado. Cada ocorrência mostra gatilho, consequência, duração e localização. O mapa destaca países com eventos ativos em anéis azuis.
-8. Pause, avance dias, inspecione países, salve/restaure ou reinicie o cenário.
-9. Quando a pesquisa mundial alcançar **100%** ou a população impactada chegar a **70%**, o jogo termina e exibe o relatório final. Compare métricas, examine marcos registrados e repita a mesma seed (mesma origem e atributos iniciais) para tentar outra estratégia. Pontos restantes deixam de ser utilizáveis ao encerrar.
-
-A simulação pausa automaticamente quando o laboratório é aberto e continua apenas quando o jogador retoma os controles de tempo.
-
-## Executar versão React
-
-Requisitos: Node.js 20.19+ ou 22.12+ e npm.
+## Executar no Debian
 
 ```bash
-cd ProjectZero
-npm install
+# Os comandos devem ser executados na pasta do repositório.
+npm run test:engine
+npm run benchmark
+npm run build
 npm run dev
 ```
 
-Use a URL mostrada pelo Vite (normalmente http://localhost:5173).
+**Somente execute `npm install` caso as dependências não estejam instaladas ou mudem.** O package.json da v0.6 não inclui novas bibliotecas. O Vite informa a URL; para acesso na rede local, use o IP da máquina e a porta informada.
 
-### Testes e build
+## v0.7 — Modos de jogo e balanceamento verificável
+
+Antes de iniciar, escolha **Modo de jogo** no painel lateral:
+
+- **Exploração**: expansão favorecida, foco em experimentar decisões (baixo desafio).
+- **Equilibrado** (padrão): disputa ajustada entre estratégia do jogador e resposta científica.
+- **Desafio**: vantagem relativa da resposta científica; exige escolhas de melhoria/tática mais eficientes.
+- **Clássico v0.6**: coeficientes e meta de 100% anteriores, preservados para compatibilidade.
+
+Nos modos Equilibrado e Desafio, a **meta científica é 98,5%**, enquanto o limite de impacto continua **70%**. O valor é uma regra de vitória fictícia, não uma afirmação sobre epidemiologia ou ciência. O relatório final mostra dificuldade, meta e multiplicadores de jogo usados. A dificuldade não pode ser alterada após começar.
+
+### Benchmark reproduzível
+
+`npm run benchmark` compila o motor e joga 576 partidas (16 seeds × 3 origens × 3 estratégias × 4 modos), sem dependências adicionais. Amostra da v0.7:
+
+| Modo | Partidas | Encerramento científico | Taxa observada | Seeds/origens com vencedores diferentes conforme a estratégia |
+|---|---:|---:|---:|---:|
+| Clássico | 144 | 0 | 0% | 0 |
+| Exploração | 144 | 0 | 0% | 0 |
+| Equilibrado | 144 | 40 | 27,8% | 17 |
+| Desafio | 144 | 89 | 61,8% | 10 |
+
+**Importante:** as taxas dependem do conjunto de testes e estratégias fixas, não são probabilidades garantidas ao jogador. Escolhas futuras de melhorias e táticas podem modificar os resultados, mas o benchmark ainda **não automatiza gastos durante a partida**.
+
+### Saves e comparações
+
+O schema de save é **v6**. Saves válidos v1–v5 são migrados automaticamente para o modo **Clássico v0.6**, preservando o comportamento anterior. A mesma chave `project-zero-save-v1` continua em uso; nenhuma exclusão ou limpeza de saves. Comparação entre partidas exige seed, origem, atributos **e modo idênticos**. Repetir a seed preserva o modo e zera compras e pontos usados.
+
+## Como jogar e usar os pontos
+
+1. Escolha um país e configure até 8 pontos **iniciais** entre quatro atributos no Laboratório Zero. Esses pontos não são o saldo para comprar melhorias.
+2. Inicie a partida. **A cada 10 dias**, você ganha 2 pontos de evolução.
+3. O jogo **pausa e abre o laboratório automaticamente** nos dias 10, 20, 30 etc. enquanto a partida estiver ativa. Também é possível clicar no aviso de pontos para abri-lo.
+4. **Árvore de melhorias**: seis melhorias compráveis uma única vez, com pré-requisitos. Algumas escolhas se excluem.
+5. **Ações táticas repetíveis**: na seção 03 do laboratório, selecione o país e gaste pontos quantas vezes quiser, enquanto houver saldo e o país cumprir os requisitos. `Impulso local` (2 PT) incrementa o indicador abstrato do país em até 1,2 ponto percentual de sua população; `Atrito institucional` (3 PT) reduz sua estabilidade em 8 e eleva a pressão em 5, respeitando limites.
+6. Clique em **Retomar no mapa** e depois em ▶ para continuar. Quando a partida termina, novas compras ficam bloqueadas para não reescrever o resultado. Use **Repetir mesma seed** ou **Nova seed** no relatório final.
+
+As táticas são determinísticas, ficam registradas no boletim e alteram o estado imediatamente. O saldo e o gasto total também são persistidos.
+
+## Arquitetura / escopo
+
+- `src/engine/simulation.ts`: motor determinístico e economia, com regras de gastos.
+- `src/engine/tactics.ts`: definição das operações táticas ficcionais.
+- `src/engine/outcome.ts`: relatório final e repetição.
+- `src/components/Laboratory.tsx`: laboratório com melhoria, alvo e ações.
+- `src/App.tsx`: pausa automática a cada novo crédito de pontos e controles do jogo.
+- `src/styles/app.css`: layout desktop/mobile.
+- `scripts/build_preview.py`: gera `preview-offline.html` reutilizando o motor TypeScript compilado.
+- `tests/engine.test.mjs`: testes de determinismo, governo, laboratório, eventos, resultados, gastos e migração.
+
+### Integridade dos saves
+
+O schema atual é **v6**, mas a chave `localStorage` permanece `project-zero-save-v1`. Saves válidos v1–v5 são migrados por `restoreGame`, preservando a seed, evolução, estado e histórico presente; partidas legadas mantêm as regras Clássicas. O campo `agent.spentTactics` registra o gasto em operações. O verificador mantém a igualdade:
+
+`pontos atuais + custo das melhorias + gasto em táticas = 2 × floor(dia / 10)`.
+
+Todos os comandos de compra verificam fase, saldo e limites. Não há backend, banco, Docker ou autenticação no MVP.
+
+### Testes e limitações
 
 ```bash
-npm run test:engine
+tsc -p tsconfig.engine.json
+node --test tests/engine.test.mjs
+# ou npm run test:engine
 npm run build
-npm run preview
 ```
 
-`npm run test:engine` valida o motor determinístico isoladamente. `npm run build` exige dependências instaladas. Para hospedagem estática, publique o conteúdo de `dist/`.
+O motor (34 testes), o benchmark e a prévia HTML offline (desktop/mobile) foram testados neste ambiente. O build completo React/Vite deve ser validado em um ambiente com as dependências npm instaladas; não foi possível fazê-lo aqui. O teste da prévia cobre mapa, pausa no dia 10/20, descontos, compra de melhoria, fim de partida e repetição no Chromium desktop/mobile.
 
-## Alterações 0.5.0 — Desfechos e Repartidas
+Ainda falta testar balanceamento envolvendo compra automatizada de melhorias, táticas e uma amostra maior de seeds. A meta de duração de 15–30 minutos continua não validada. Não há multiplayer, backend, integrações com lives nem modelagem do mundo real.
 
-- `src/engine/outcome.ts`: sumário do desfecho com métricas derivadas do estado real, marcos de expansão e pesquisa registrados, e repetição controlada de seed.
-- `src/components/GameOutcome.tsx`: modal de resultado com país de origem, tempo, percentual impactado, avanço científico, melhorias, cronologia e comparação entre tentativas compatíveis.
-- `src/App.tsx`: relatório ao fim da partida, acesso posterior pelo painel lateral, opção de gerar nova seed ou repetir a mesma com os atributos iniciais preservados.
-- `src/components/Laboratory.tsx`: diferencia os pontos utilizáveis durante a partida do saldo histórico bloqueado após o encerramento.
-- `scripts/build_preview.py` / `preview-offline.html`: demonstração independente de dependências com o mesmo motor de resultados, cronologia e botões de repetir.
-- **Saves**: schema v4 inalterado; compatibilidade com versões anteriores mantida. A comparação entre duas partidas permanece em memória apenas durante a sessão, não é salva nem enviada ao servidor.
-- **Validação**: 25 testes de motor aprovados. Prévia HTML testada no Chromium com encerramento, repetição da seed e comparação, sem erros JS. Sintaxe TSX inspecionada. Build React/Vite completo ainda requer `npm install` em ambiente com acesso ao registro npm.
-
-**Limite conhecido:** repetir a mesma seed não executa um replay automático das decisões passadas; cria um novo jogo equivalente, onde as escolhas podem ser diferentes. A cronologia usa registros retidos (histórico de até 320 ticks e até 120 eventos); não inventa marcos anteriores.
-
-## Alterações 0.4.0 — Eventos Globais
-
-- `src/engine/events.ts`: quatro eventos fictícios (`crise_economica`, `instabilidade_politica`, `descoberta_cientifica`, `ruptura_diplomatica`), condições de disparo, chances determinísticas, cooldown de 30 dias por país, efeitos imediatos e efeitos temporários.
-- `src/engine/simulation.ts`: avaliação depois do tick de todos os países; consequências sobre orçamento, estabilidade e pesquisa, e modificadores temporários para ciência, conexões, crescimento e recuperação de orçamento. Um evento não reescreve o passado.
-- `src/components/WorldEvents.tsx`: linha do tempo dos eventos com causas, consequências, status e filtros por país/ativos; integra seleção do território no mapa.
-- `src/components/WorldMap.tsx`: anéis azuis para acontecimentos em curso. O painel de governo também indica efeitos ativos.
-- `scripts/build_preview.py` e `preview-offline.html`: versão HTML autônoma com os mesmos gatilhos e modificadores calculados pelo motor TypeScript.
-- **Saves** com schema v4: `restoreGame` valida e migra schemas v1, v2 e v3 para v4, preservando progresso, laboratório e governos. Saves anteriores começam sem eventos retroativos.
-- **Testes**: 21 testes Node.js/TypeScript passaram, incluindo gatilhos, cooldown, limites, determinismo, validade de saves e consequências no tick seguinte.
-- **Navegador**: Chromium testado em desktop e mobile, com 85 dias, 176 territórios, filtros, seleção, salvamento/restauração e sem erros JS.
-
-Observação: `npm install` não concluiu nesta execução por falha DNS (`EAI_AGAIN`), portanto o build React/Vite ainda **não foi validado**; a prévia HTML e o motor compilado foram validados.
-
-## Alterações 0.3.0 — Inteligência Mundial
-
-- **Novo** `src/engine/intelligence.ts`: 4 doutrinas de governo, 6 decisões, custos, efeitos e regras reprodutíveis.
-- **Novo** `src/components/WorldIntelligence.tsx`: ranking científico interativo, canais de cooperação, mobilização e indicadores governamentais.
-- **Atualizado** `src/engine/simulation.ts`: estado por país com ação, pressão social, orçamento, estabilidade, parceiro e motivo da decisão. Ações têm duração limitada e efeitos no avanço diário. Pesquisa internacional transfere progresso de forma abstrata. Ranking registra notícias por ciclos.
-- **Atualizado** React e prévia HTML autônoma, com painéis sincronizados ao motor.
-- **Migração de saves** schema 1 → 3 e 2 → 3 sem perda das escolhas de laboratório armazenadas no v2.
-- **Corrigido**: mudar país de origem antes de iniciar a partida não apaga mais a configuração do laboratório.
-- **Testes**: 15 testes do motor passaram; demo offline verificada com Chromium desktop/mobile, incluindo ranking, seleção e avanço de 64 dias.
-
-Todas as decisões de governo são **máquinas de estado lúdicas**, não modelos de política pública ou epidemiologia real. Nenhum serviço de IA externa é utilizado.
-
-## Alterações 0.2.0
-
-- **Novo** `src/components/Laboratory.tsx` — interface de configuração, árvore e indicadores de efeitos.
-- **Novo** `src/engine/laboratory.ts` — definições de atributos, melhorias, requisitos e exclusões.
-- **Atualizado** `src/engine/simulation.ts` — motor responde aos atributos, pontos são gerados a cada dez ticks, compras são transações imutáveis e resultados continuam reproduzíveis.
-- **Atualizado** `src/App.tsx` e `src/styles/app.css` — abertura do laboratório no mapa, estado pausado, layout desktop/mobile.
-- **Atualizado** `scripts/build_preview.py` e `preview-offline.html` — a demonstração executa o mesmo motor compilado em TypeScript, sem React.
-- **Atualizado** `tests/engine.test.mjs` — 15 testes automatizados, incluindo limites, bloqueios, determinismo, compra e migração.
-
-## Compatibilidade e persistência
-
-O schema atual dos saves é **v4**, usando a mesma chave `project-zero-save-v1` em `localStorage` para localizar partidas antigas. `restoreGame()` valida saves v1, v2 e v3 antes de migrá-los: preserva seed, dia, países, pesquisa, laboratório (a partir do v2) e governos (a partir do v3). Os eventos antigos não são inventados retroativamente — o histórico `globalEvents` começa vazio ao migrar. Saves v4 válidos mantêm seus eventos e consequências.
-
-O validador aplica limites de população, pesquisa, pontos de evolução, governos e estrutura/eventos por tipo; registra até 120 acontecimentos de mundo e até 70 notícias recentes. Os efeitos temporários são calculados a cada tick apenas para eventos dentro da vigência. Uma partida gerada com a mesma seed e as mesmas decisões evolui de maneira reproduzível.
-
-## Limitações de MVP
-
-- 18 países ativos, sobre mapa de 176 territórios simplificados. Demais territórios são elementos visuais.
-- Configuração abstrata, não epidemiológica; fórmulas escolhidas para gameplay, ainda sem balanceamento estatístico.
-- Não há multiplayer, integração com YouTube, servidor, banco, API, autenticação ou contas.
-- O save local (`localStorage`) pertence à origem do navegador. Abrir como arquivo e abrir via servidor podem criar armazenamentos distintos.
-- A árvore tem 6 melhorias únicas; os governos possuem 4 perfis e 6 ações; há 4 tipos de eventos globais.
-- A execução de `npm run build` não foi validada neste ambiente por falta das dependências React/Vite; a demo offline foi validada em Chromium, e os 21 testes Node.js/TypeScript passaram.
-
-## Validação manual / regressão
-
-1. No laboratório, teste aumentar níveis até esgotar o orçamento de 8 pontos. Os controles devem bloquear valores inválidos.
-2. Edite nome e atributos, inicie a partida e confirme que eles ficam travados.
-3. Avance até o dia 10; observe 2 pontos disponíveis e a notícia correspondente.
-4. Com Propagação >= 2, compre **Correntes cruzadas** (2 PT). O saldo deve cair para 0; tentativa de compra duplicada é bloqueada.
-5. Configure Resistência >= 2 e teste **Rede aberta** versus **Núcleo concentrado** ao obter pontos: comprar um deve bloquear o outro.
-6. Com a mesma seed e mesmas escolhas, o resultado deve se repetir. Com escolhas diferentes, os estados devem divergir.
-7. Salve e recarregue, depois teste migração de uma partida antiga v1, seleção de países, zoom, painel científico e encerramento.
-8. Avance até surgir um evento; confira causa e consequência, ícone no mapa, filtro por país, expiração do efeito e preservação do histórico.
-9. Teste a interface desktop, celular, navegação por teclado e redução de movimento.
-
-**Fonte geográfica:** Natural Earth (baixo detalhamento, domínio público). Contornos e valores nacionais foram simplificados para o jogo, sem pretensão de fronteiras ou estatísticas oficiais.
-
-**Isolamento:** a aplicação não compartilha infraestrutura, banco, código de produção nem credenciais com qualquer outro projeto.
+**Dados cartográficos:** Natural Earth (domínio público); limites simplificados. Projeto isolado dos demais produtos da OWS.
