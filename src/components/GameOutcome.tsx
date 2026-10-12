@@ -29,7 +29,7 @@ export function GameOutcome({game,previous,onClose,onRepeat,onNew}:Props) {
   const timeline=buildMilestones(game);
   return <div className="result-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
     <section className="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title">
-      <header className="result-topline"><span>PROJECT ZERO / RELATÓRIO DE MISSÃO <b>V0.5</b></span><button ref={closeRef} className="result-close" type="button" onClick={onClose} aria-label="Fechar resultado">✕</button></header>
+      <header className="result-topline"><span>PROJECT ZERO / RELATÓRIO DE MISSÃO <b>V0.6</b></span><button ref={closeRef} className="result-close" type="button" onClick={onClose} aria-label="Fechar resultado">✕</button></header>
       <div className={`result-hero ${victory?'result-success':'result-containment'}`}>
         <span className="result-eyebrow">CENÁRIO ENCERRADO · DIA {current.day} · SEED #{current.seed}</span>
         <h2 id="result-title">{victory?'Limite crítico atingido.':'Contenção científica concluída.'}</h2>
@@ -41,7 +41,7 @@ export function GameOutcome({game,previous,onClose,onRepeat,onNew}:Props) {
           <div><span>DIAS DE PARTIDA</span><strong>{current.day}</strong></div>
           <div><span>POPULAÇÃO IMPACTADA</span><strong>{format(current.affectedPct)}%</strong></div>
           <div><span>PESQUISA GLOBAL</span><strong>{format(current.research)}%</strong></div>
-          <div><span>EVOLUÇÕES ADQUIRIDAS</span><strong>{current.upgrades}</strong></div>
+          <div><span>EVOLUÇÕES / PONTOS TÁTICOS</span><strong>{current.upgrades} / {current.tacticsSpent} PT</strong></div>
         </div>
         <div className="result-section-title"><h3>Marcos da partida</h3><span>{timeline.length} registros calculados</span></div>
         <ol className="result-milestones">

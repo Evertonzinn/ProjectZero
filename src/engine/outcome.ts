@@ -14,6 +14,7 @@ export interface RunSummary {
   research: number;
   activeCountries: number;
   upgrades: number;
+  tacticsSpent: number;
   events: number;
 }
 export interface Milestone { day: number; label: string; category: 'inicio'|'expansao'|'pesquisa'|'evento'|'fim' }
@@ -25,7 +26,7 @@ export function summarizeRun(game: GameState): RunSummary | null {
     seed:game.seed, origin:game.origin, attributes:{...game.agent.attributes},
     day:game.day, outcome:game.phase, affectedPct:stats.affectedPct,
     research:stats.research, activeCountries:stats.activeCountries,
-    upgrades:game.agent.purchased.length, events:game.globalEvents.length,
+    upgrades:game.agent.purchased.length, tacticsSpent:game.agent.spentTactics, events:game.globalEvents.length,
   };
 }
 
