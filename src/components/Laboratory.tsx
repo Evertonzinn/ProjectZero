@@ -10,6 +10,7 @@ import type { GameState } from '../engine/simulation';
 const pct=(n:number)=>`${Math.round((n-1)*100)>=0?'+':''}${Math.round((n-1)*100)}%`;
 interface Props {
   game: GameState;
+  feedback: string;
   selected: string;
   onSelect: (id: string) => void;
   onTactic: (id:TacticId,countryId:string) => void;
@@ -19,7 +20,7 @@ interface Props {
   onPurchase: (id: UpgradeId) => void;
 }
 
-export function Laboratory({game,selected,onSelect,onTactic,onClose,onName,onAttribute,onPurchase}:Props) {
+export function Laboratory({game,feedback,selected,onSelect,onTactic,onClose,onName,onAttribute,onPurchase}:Props) {
   const closeRef=useRef<HTMLButtonElement>(null);
   const setup=game.phase==='setup';
   const free=freeAttributePoints(game.agent.attributes);
@@ -58,6 +59,7 @@ export function Laboratory({game,selected,onSelect,onTactic,onClose,onName,onAtt
         <div className="lab-evolutions">
           <div className="lab-section-heading"><div><span>02 / EVOLUÇÃO</span><h3>Árvore de melhorias</h3></div><div className="lab-points"><span>{game.phase==='running'?'PONTOS DISPONÍVEIS':game.phase==='setup'?'PONTOS FUTUROS':'SALDO FINAL (BLOQUEADO)'}</span><strong>{game.agent.points.toString().padStart(2,'0')}</strong></div></div>
           <div className="lab-callout"><span>◈</span><p>{game.phase==='running'?<>Ganhe <b>2 pontos a cada 10 dias</b>. O relógio pausa automaticamente para permitir decisões. Compre melhorias uma vez ou invista em ações táticas repetíveis.</>:game.phase==='setup'?<>Distribua os <b>8 pontos iniciais</b> à esquerda. Os pontos de evolução começam no dia 10; depois, o jogo pausa para você utilizá-los.</>:<>A partida foi encerrada. <b>Os pontos restantes são históricos</b> e não podem ser gastos. Use Repetir mesma seed para tentar outra estratégia.</>}</p></div>
+          {feedback&&<div className="lab-decision-feedback" role="status" aria-live="polite">{feedback}</div>}
           {game.phase==='running'&&<div className="lab-eligibility" role="status">◈ {affordableUpgrades} melhorias e {affordableTactics} ações táticas disponíveis agora. Selecione as opções habilitadas.</div>}
           <div className="lab-upgrades">{UPGRADES.map((up,i)=>{
             const available=availableUpgrade(game,up.id),owned=game.agent.purchased.includes(up.id);

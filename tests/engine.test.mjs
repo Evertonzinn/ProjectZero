@@ -461,3 +461,47 @@ test('a amostra de balanceamento produz vitórias e derrotas no modo equilibrado
   assert.ok(results.has('contained'));
   assert.ok(results.has('overwhelmed'));
 });
+
+import { TUTORIAL_STEPS, getGuidance, upgradeFeedback, tacticFeedback } from '../.engine-build/engine/guide.js';
+
+test('guia tem quatro etapas estáveis e instruções sobre saldo inicial e evolução', () => {
+  assert.equal(TUTORIAL_STEPS.length,4);
+  assert.match(TUTORIAL_STEPS[1].text,/8 pontos/);
+  assert.match(TUTORIAL_STEPS[2].text,/10 dias/);
+  assert.equal(new Set(TUTORIAL_STEPS.map(s=>s.caption)).size,4);
+});
+
+test('orientação muda de configuração para evolução conforme o estado real da partida', () => {
+  const original=createGame('BRA',719,'equilibrado');
+  const snap=structuredClone(original);
+  let guide=getGuidance(original,'BRA');
+  assert.equal(guide.action,'lab');
+  assert.match(guide.title,/2 pontos iniciais/);
+  assert.deepEqual(original,snap);
+  let prepared=adjustAttribute(original,'resistencia',1);
+  prepared=adjustAttribute(prepared,'instabilidade',1);
+  guide=getGuidance(prepared,'BRA');
+  assert.equal(guide.action,'start');
+  let running=startGame(prepared);
+  for(let i=0;i<10;i++)running=advanceDay(running);
+  assert.equal(running.day,10);
+  guide=getGuidance(running,'BRA');
+  assert.equal(guide.action,'lab');
+  assert.match(guide.title,/2 pontos de evolução/);
+  const purchased=upgradeFeedback(running,'correntes');
+  assert.ok(purchased?.includes('−2 PT'));
+  assert.equal(upgradeFeedback(buyUpgrade(running,'correntes'),'correntes'),null);
+});
+
+test('feedback de ação tática deriva dos estados antes e depois, não altera saves', () => {
+  let g=startGame(createGame('BRA',1024,'equilibrado'));
+  for(let i=0;i<20;i++)g=advanceDay(g);
+  const old=structuredClone(g);
+  const next=applyTactic(g,'friccao','BRA');
+  const feedback=tacticFeedback(g,next,'friccao','BRA');
+  assert.ok(feedback?.includes('−3 PT'));
+  assert.ok(feedback?.includes('Estabilidade'));
+  assert.deepEqual(g,old);
+  assert.equal(tacticFeedback(g,g,'friccao','BRA'),null);
+  assert.equal(isGameState(next),true);
+});

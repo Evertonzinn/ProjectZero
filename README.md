@@ -1,4 +1,4 @@
-# Project Zero — Balanceamento Estratégico (Alpha v0.7.0)
+# Project Zero — Primeira Experiência do Jogador (Alpha v0.8.0)
 
 Jogo de estratégia global em React, Vite e TypeScript, com mapa 2D, laboratório, governos autônomos, acontecimentos causais, relatório final e repartidas. Toda a simulação é **fictícia**: os indicadores de propagação são mecânicas abstratas de jogo, não modelos epidemiológicos.
 
@@ -13,6 +13,26 @@ npm run dev
 ```
 
 **Somente execute `npm install` caso as dependências não estejam instaladas ou mudem.** O package.json da v0.6 não inclui novas bibliotecas. O Vite informa a URL; para acesso na rede local, use o IP da máquina e a porta informada.
+
+## v0.8 — Primeira Experiência do Jogador
+
+O motor e o formato de saves **permanecem os da v0.7**: não há reset, alteração na seed, backend, login ou bibliotecas adicionais.
+
+- **Tutorial inicial de quatro etapas**: origem/dificuldade, 8 pontos iniciais, evolução a cada 10 dias e resultados/repartidas. Pode ser ignorado e reaberto pelo botão **? COMO JOGAR**. O tutorial utiliza somente a chave independente `project-zero-guide-v08` do `localStorage` e não altera a partida salva.
+- **Orientação contextual** no painel do cenário: mostra o próximo passo compatível com o estado real (distribuir pontos iniciais, iniciar, gastar pontos, acompanhar metas ou consultar o relatório). Os botões executam a ação indicada.
+- **Feedback depois da compra de melhoria**: apresenta o custo real, benefício e eventual contrapartida. Após uma tática, mostra o saldo descontado e os indicadores locais antes e depois, obtidos de estados efetivamente calculados pelo motor.
+- **Prévia offline equivalente**: possui tutorial, orientador e feedback com os mesmos textos/regras, sem depender de npm ou conexão.
+- **Acessibilidade**: tutorial com diálogo, foco inicial, teclado (Tab / Shift+Tab / Esc), botões rotulados e apresentação responsiva.
+
+### Como testar
+
+1. Inicie uma nova sessão; o guia aparece uma única vez por navegador (a menos que se clique em **? COMO JOGAR**).
+2. Complete ou pule o guia; abra Laboratório Zero e distribua seus 2 pontos iniciais ainda livres.
+3. Inicie a simulação e espere a pausa do dia 10. Compre uma melhoria e confira o desconto/effect no banner do laboratório.
+4. No dia 20 ou depois, selecione um país e use uma ação tática quando possuir saldo; veja os indicadores reais antes/depois.
+5. Salve e carregue uma partida existente; o save continua na versão 6. O tutorial não é gravado nele.
+
+**Testes automatizados conhecidos:** 37 testes do motor e casos de Chromium desktop/mobile na prévia offline. O build React/Vite completo deve ser confirmado no Debian pelo `npm run build` antes do merge.
 
 ## v0.7 — Modos de jogo e balanceamento verificável
 
@@ -81,7 +101,7 @@ node --test tests/engine.test.mjs
 npm run build
 ```
 
-O motor (34 testes), o benchmark e a prévia HTML offline (desktop/mobile) foram testados neste ambiente. O build completo React/Vite deve ser validado em um ambiente com as dependências npm instaladas; não foi possível fazê-lo aqui. O teste da prévia cobre mapa, pausa no dia 10/20, descontos, compra de melhoria, fim de partida e repetição no Chromium desktop/mobile.
+O motor (37 testes), o benchmark e a prévia HTML offline (desktop/mobile) foram testados neste ambiente. O build completo React/Vite da v0.8 deve ser validado em um ambiente com as dependências npm instaladas; não foi possível fazê-lo aqui. O teste da prévia cobre mapa, pausa no dia 10/20, descontos, compra de melhoria, fim de partida e repetição no Chromium desktop/mobile.
 
 Ainda falta testar balanceamento envolvendo compra automatizada de melhorias, táticas e uma amostra maior de seeds. A meta de duração de 15–30 minutos continua não validada. Não há multiplayer, backend, integrações com lives nem modelagem do mundo real.
 
