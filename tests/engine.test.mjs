@@ -44,7 +44,7 @@ import { adjustAttribute, availableUpgrade, buyUpgrade, getLabModifiers, restore
 
 test('pontos iniciais são limitados a oito e atributos travam após iniciar', () => {
   let g=createGame('BRA',3);
-  assert.equal(g.version,3);
+  assert.equal(g.version,4);
   assert.equal(g.agent.attributes.propagacao,2);
   g=adjustAttribute(g,'propagacao',1);
   g=adjustAttribute(g,'resistencia',1);
@@ -101,7 +101,7 @@ test('save versão 1 é migrado mantendo mapa, dia e seed',()=>{
   const legacy={...old,version:1,countries:Object.fromEntries(Object.entries(old.countries).map(([id,{government,...c}])=>[id,c]))};
   const restored=restoreGame(legacy);
   assert.ok(restored);
-  assert.equal(restored.version,3);
+  assert.equal(restored.version,4);
   assert.equal(restored.day,21);
   assert.equal(restored.seed,84);
   for(const c of COUNTRIES){
@@ -166,7 +166,7 @@ test('salvamento v2 migra para v3 sem perder laboratório, pesquisa e seed',()=>
   const legacy={...g,version:2,countries:Object.fromEntries(Object.entries(g.countries).map(([id,{government,...c}])=>[id,c]))};
   const migrated=restoreGame(legacy);
   assert.ok(migrated);
-  assert.equal(migrated.version,3);
+  assert.equal(migrated.version,4);
   assert.equal(migrated.day,23);
   assert.equal(migrated.seed,12345);
   assert.deepEqual(migrated.agent,g.agent);
@@ -193,4 +193,78 @@ test('trocar origem na configuração preserva pontos e laboratório',()=>{
   assert.deepEqual(updated.agent,g.agent);
   assert.equal(g.origin,'BRA');
   assert.equal(changeOrigin(startGame(updated),'USA').origin,'JPN');
+});
+
+import { decideGlobalEvent, getEventModifiers, makeGlobalEvent, EVENT_DEFINITIONS } from '../.engine-build/engine/events.js';
+
+test('gatilhos causais disparam apenas com requisitos e seed controlável',()=>{
+  const base={budget:25,stability:40,pressure:50,research:48,science:92,action:'investir',partner:null};
+  assert.equal(decideGlobalEvent(base,[0,1,1,1]),'crise_economica');
+  assert.equal(decideGlobalEvent({...base,budget:60},[0,0,1,1]),'instabilidade_politica');
+  assert.equal(decideGlobalEvent({...base,budget:60,stability:90},[1,1,0,1]),'descoberta_cientifica');
+  assert.equal(decideGlobalEvent({...base,budget:60,stability:90,action:'cooperar',partner:'FRA'},[1,1,1,0]),'ruptura_diplomatica');
+  assert.equal(decideGlobalEvent({...base,budget:99,stability:98,pressure:0,research:0},[0,0,0,0]),null);
+});
+test('efeitos temporários expiraram, mas consequências imediatas permanecem',()=>{
+  const state={budget:20,stability:48,pressure:40,research:25,science:92,action:'investir',partner:null};
+  const event=makeGlobalEvent('crise_economica','JPN',15,state);
+  assert.equal(getEventModifiers([event],'JPN',16).recovery,EVENT_DEFINITIONS.crise_economica.impacts.recovery);
+  assert.equal(getEventModifiers([event],'JPN',event.expiresDay).recovery,EVENT_DEFINITIONS.crise_economica.impacts.recovery);
+  assert.equal(getEventModifiers([event],'JPN',event.expiresDay+1).recovery,0);
+  assert.equal(getEventModifiers([event],'BRA',16).links,1);
+  const bonus=makeGlobalEvent('descoberta_cientifica','USA',16,state);
+  assert.equal(bonus.impacts.research,5);
+  assert.equal(bonus.expiresDay,16+EVENT_DEFINITIONS.descoberta_cientifica.duration);
+});
+test('histórico de eventos permanece ordenado, com cooldown e quatro categorias',()=>{
+  const one=simulate(20261012,180);
+  const two=simulate(20261012,180);
+  assert.deepEqual(one.globalEvents,two.globalEvents);
+  assert.ok(one.globalEvents.length>10);
+  assert.deepEqual(new Set(one.globalEvents.map(e=>e.kind)),new Set([
+    'crise_economica','instabilidade_politica','descoberta_cientifica','ruptura_diplomatica'
+  ]));
+  for (const e of one.globalEvents){
+    const same=one.globalEvents.filter(candidate=>candidate.countryId===e.countryId && candidate.id!==e.id);
+    assert.ok(same.every(candidate=>Math.abs(candidate.day-e.day)>=30),e.id);
+  }
+  assert.equal(isGameState(one),true);
+});
+test('save v3 é migrado para v4 sem perder governos e pesquisas',()=>{
+  const g=simulate(2026,47);
+  const {globalEvents,...legacyState}=g;
+  const old={...legacyState,version:3};
+  const restored=restoreGame(old);
+  assert.ok(restored);
+  assert.equal(restored.version,4);
+  assert.equal(restored.seed,g.seed);
+  assert.equal(restored.day,g.day);
+  assert.deepEqual(restored.countries,g.countries);
+  assert.deepEqual(restored.globalEvents,[]);
+  assert.equal(isGameState(restored),true);
+  assert.equal(restoreGame({...old,countries:{...old.countries,BRA:{...old.countries.BRA,government:{...old.countries.BRA.government,budget:-1}}}}),null);
+  assert.ok(globalEvents);
+});
+test('save v4 rejeita eventos falsificados e recuperação preserva histórico',()=>{
+  const game=simulate(456,67);
+  assert.ok(game.globalEvents.length>0);
+  const copy=JSON.parse(JSON.stringify(game));
+  assert.deepEqual(restoreGame(copy),copy);
+  copy.globalEvents[0].impacts.research=999;
+  assert.equal(restoreGame(copy),null);
+  const duplicate=JSON.parse(JSON.stringify(game));
+  duplicate.globalEvents.push(duplicate.globalEvents[0]);
+  assert.equal(isGameState(duplicate),false);
+});
+
+test('efeito de crise ativa altera efetivamente a próxima transição de estado',()=>{
+  let base=startGame(createGame('BRA',607));
+  for (let i=0;i<30;i++) base=advanceDay(base);
+  const conditions={budget:20,stability:50,pressure:40,research:30,science:56,action:'investir',partner:null};
+  const event=makeGlobalEvent('crise_economica','BRA',base.day,conditions);
+  const withEvent={...base,globalEvents:[event,...base.globalEvents.filter(e=>e.countryId!=='BRA')]};
+  const original=advanceDay(base);
+  const changed=advanceDay(withEvent);
+  assert.ok(changed.countries.BRA.government.budget<original.countries.BRA.government.budget);
+  assert.ok(changed.countries.BRA.research<=original.countries.BRA.research);
 });

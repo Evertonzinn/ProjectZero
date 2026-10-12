@@ -126,9 +126,11 @@ export function WorldMap({game,selected,onSelect}:WorldMapProps) {
               const [px,py]=xy(country.position);
               const active=st.affected>0;
               const chosen=selected===country.id;
+              const worldEvent=game.globalEvents.some(e=>e.countryId===country.id&&game.day<e.expiresDay);
               return <g key={country.id} transform={`translate(${px} ${py})`}>
                 {active&&<circle r={16} fill="#eb7d67" opacity=".28" filter="url(#glow)"/>}
                 {active&&<circle r={10} fill="none" stroke="#ff9e80" strokeOpacity=".6" strokeWidth=".9" className="map-pulse"/>}
+                {worldEvent&&<circle r={22} fill="none" stroke="#89d3ec" opacity=".92" strokeWidth="1.7" strokeDasharray="4 5"/>}
                 {chosen&&<circle r={16} fill="none" stroke="#b7f56b" strokeWidth="1.4" strokeDasharray="3 4"/>}
                 <circle r={chosen?5.4:active?4.3:3.2} fill={active?'#ffa07e':chosen?'#baf675':'#7fb7d1'} stroke="#0d1a26" strokeWidth="1.6"/>
                 {game.origin===country.id&&<path d={originMarker} fill="none" stroke="#caff80" opacity=".95" strokeWidth="1.4" transform="translate(0,-14) scale(.75)"/>}

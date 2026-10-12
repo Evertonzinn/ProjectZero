@@ -22,11 +22,12 @@ export function WorldIntelligence({game,selected,onSelect}:{game:GameState;selec
 export function GovernmentDetail({game,id}:{game:GameState;id:string}) {
  const s=game.countries[id],gov=s.government,persona=DOCTRINES[COUNTRY_DOCTRINE[id]],action=ACTIONS[gov.action];
  return <section className="gov-detail" aria-label="Estratégia governamental">
-   <div className="gov-caption">INTELIGÊNCIA DE GOVERNO <b>AI RULES / V0.3</b></div>
+   <div className="gov-caption">INTELIGÊNCIA DE GOVERNO <b>AI RULES / V0.4</b></div>
    <div className="gov-doctrine"><small>PERFIL DE GOVERNO</small><strong>{persona.label}</strong><span>{persona.description}</span></div>
    <div className="gov-current"><small>DECISÃO ATUAL · ATÉ O DIA {gov.until}</small><strong>{action.label}</strong><span>{action.description}</span></div>
    <div className="gov-reason"><span>POR QUE ESSA DECISÃO?</span><p>{gov.reason}</p></div>
    {gov.partner && <div className="gov-partner">↗ CANAL CIENTÍFICO: {COUNTRY_BY_ID[gov.partner].flag} {COUNTRY_BY_ID[gov.partner].name}</div>}
+   {active.length>0&&<div className="gov-active-events"><strong>◈ EVENTOS COM EFEITOS ATIVOS</strong>{active.map(e=><span key={e.id}>{e.title} · até o dia {e.expiresDay}</span>)}</div>}
    <div className="gov-indicators">{([['PRESSÃO SOCIAL',gov.pressure],['ORÇAMENTO',gov.budget],['ESTABILIDADE',gov.stability]] as const).map(([label,n])=><div className="gov-metric" key={label}><div><span>{label}</span><b>{Math.round(n)}/100</b></div><div className="gov-meter"><i style={{width:`${n}%`}}/></div></div>)}</div>
    <span className="gov-disclaimer">Parâmetros e reações fictícios, exclusivos deste jogo.</span>
  </section>;
