@@ -7,6 +7,8 @@ import { EVENT_DEFINITIONS, EVENT_KINDS, decideGlobalEvent, getEventModifiers, m
 import type { GlobalEvent } from './events.js';
 import { TACTIC_BY_ID } from './tactics.js';
 import type { TacticId } from './tactics.js';
+import { DEFAULT_MODE, MODES, isGameMode } from './balance.js';
+import type { GameMode } from './balance.js';
 
 export type Policy = 'normal' | 'atencao' | 'restricoes' | 'emergencia';
 export type Phase = 'setup' | 'running' | 'contained' | 'overwhelmed';
@@ -33,7 +35,8 @@ export interface AgentState {
   spentTactics: number;
 }
 export interface GameState {
-  version: 5;
+  version: 6;
+  mode: GameMode;
   globalEvents: GlobalEvent[];
   agent: AgentState;
   seed: number;
@@ -56,13 +59,17 @@ function noise(seed: number, day: number, id: string, channel: number): number {
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const policyStrength: Record<Policy, number> = { normal: 1, atencao: .82, restricoes: .57, emergencia: .39 };
 
-export function createGame(origin = 'BRA', seed = 20261012): GameState {
+export function createGame(origin = 'BRA', seed = 20261012, mode: GameMode = DEFAULT_MODE): GameState {
   if (!COUNTRY_BY_ID[origin]) throw new Error('País de origem inválido');
   if (!Number.isSafeInteger(seed)) throw new Error('Seed inválida');
+  if (!isGameMode(mode)) throw new Error('Modo inválido');
   const countries = Object.fromEntries(COUNTRIES.map(c => [c.id, {
     affected: 0, newlyAffected: 0, research: 0, policy: 'normal' as Policy, government:initialGovernmentState(),
   }]));
-  return { version:5, globalEvents:[], agent:{name:'PROTOCOLO ZERO',attributes:{...DEFAULT_ATTRIBUTES},points:0,purchased:[],spentTactics:0}, seed, day:0, origin, phase:'setup', countries, news:[], history:[{day:0, affected:0, research:0}] };
+  return { version:6, mode, globalEvents:[], agent:{name:'PROTOCOLO ZERO',attributes:{...DEFAULT_ATTRIBUTES},points:0,purchased:[],spentTactics:0}, seed, day:0, origin, phase:'setup', countries, news:[], history:[{day:0, affected:0, research:0}] };
+}
+export function changeMode(game: GameState, mode: GameMode): GameState {
+  return game.phase==='setup' && isGameMode(mode) ? {...game,mode} : game;
 }
 export function changeOrigin(game: GameState, id: string): GameState {
   if (game.phase!=='setup' || !COUNTRY_BY_ID[id]) return game;
@@ -188,6 +195,7 @@ export function advanceDay(game: GameState): GameState {
   const day = game.day + 1;
   // Coeficientes simbólicos de gameplay, sem modelagem de fenômenos reais.
   const {growthFactor,networkFactor,signalFactor,defenseFactor,scienceFactor}=getLabModifiers(game);
+  const balance=MODES[game.mode];
   const next: Record<string, CountryState> = {};
   const events: NewsItem[] = [];
   const oldStats = getWorldStats(game);
@@ -203,7 +211,7 @@ export function advanceDay(game: GameState): GameState {
     }, 0);
     let introductions = 0;
     if (previous.affected === 0 && edges > .00008) {
-      const chance = clamp((edges * 15 + .028)*networkFactor * ACTIONS[previous.government.action].links * eventEffect.links, 0, .9);
+      const chance = clamp((edges * 15 + .028)*networkFactor * balance.network * ACTIONS[previous.government.action].links * eventEffect.links, 0, .9);
       if (noise(game.seed, day, country.id, 11) < chance) {
         introductions = Math.round(country.population * .000001);
         events.push({id:`arrival-${country.id}`,day,category:'alerta',text:`${country.name} registrou o primeiro sinal de crise.`});
@@ -212,7 +220,7 @@ export function advanceDay(game: GameState): GameState {
     const variation = .91 + noise(game.seed, day, country.id, 23) * .18;
     const defense = previous.policy === 'normal' ? 1 : defenseFactor;
     const activeMeasure=ACTIONS[previous.government.action];
-    const growth = Math.round(previous.affected * (.095 + country.connectivity * .0017) * policyStrength[previous.policy] * variation * growthFactor * defense * activeMeasure.growth * eventEffect.growth);
+    const growth = Math.round(previous.affected * (.095 + country.connectivity * .0017) * policyStrength[previous.policy] * variation * growthFactor * balance.growth * defense * activeMeasure.growth * eventEffect.growth);
     const newlyAffected = clamp(growth + introductions, 0, country.population - previous.affected);
     const affected = previous.affected + newlyAffected;
     const nextRatio = affected / country.population;
@@ -225,7 +233,7 @@ export function advanceDay(game: GameState): GameState {
     const partnerState=previous.government.partner ? game.countries[previous.government.partner] : undefined;
     const knowledge = previous.government.action==='cooperar' && partnerState
       ? clamp((partnerState.research-previous.research)*.018,0,.48) : 0;
-    const scienceStep = hasActiveWorld ? (.12 + country.science * .006 + (ratio > .003 ? .12 : 0))*scienceFactor*activeMeasure.science*eventEffect.science + knowledge : 0;
+    const scienceStep = hasActiveWorld ? (.12 + country.science * .006 + (ratio > .003 ? .12 : 0))*scienceFactor*balance.science*activeMeasure.science*eventEffect.science + knowledge : 0;
     const research = clamp(previous.research + scienceStep, 0, 100);
     for(const milestone of [25,50,75,100]) if(previous.research<milestone && research>=milestone) {
       events.push({id:`research-${milestone}-${country.id}`,day,category:'pesquisa',text:`${country.name} alcançou ${milestone}% de progresso científico.`});
@@ -281,9 +289,9 @@ export function advanceDay(game: GameState): GameState {
   const stats = getWorldStats(result);
   if(day%10===0) result.news.unshift({id:`leader-${day}`,day,category:'pesquisa',text:`Corrida científica: ${COUNTRY_BY_ID[stats.leader].name} lidera com ${result.countries[stats.leader].research.toFixed(1)}%.`});
   result.history[result.history.length-1].research = stats.research;
-  if (stats.research >= 100) {
+  if (stats.research >= balance.researchGoal) {
     result.phase='contained';
-    result.news.unshift({id:`outcome-${day}`,day,category:'mundo',text:'Programa científico global concluído. A crise entrou em fase de contenção.'});
+    result.news.unshift({id:`outcome-${day}`,day,category:'mundo',text:`Programa científico alcançou a meta do modo (${balance.researchGoal}%). A crise entrou em fase de contenção.`});
   } else if (stats.affectedPct >= 70) {
     result.phase='overwhelmed';
     result.news.unshift({id:`outcome-${day}`,day,category:'mundo',text:'O limite crítico do cenário foi ultrapassado. Simulação encerrada.'});
@@ -292,8 +300,8 @@ export function advanceDay(game: GameState): GameState {
   return result;
 }
 
-// Validação de saves legados e atuais antes de migrar para o schema v4.
-function isGameStateBase(value: unknown, version:1|2|3|4|5): boolean {
+// Validação de saves legados e atuais antes de migrar para o schema v6.
+function isGameStateBase(value: unknown, version:1|2|3|4|5|6): boolean {
   if (!value || typeof value!=='object') return false;
   const g=value as Partial<GameState>;
   if (g.version!==version || !Number.isSafeInteger(g.seed) || !Number.isInteger(g.day) || (g.day??-1)<0 || !g.origin || !COUNTRY_BY_ID[g.origin]) return false;
@@ -315,8 +323,9 @@ function isGameStateBase(value: unknown, version:1|2|3|4|5): boolean {
   });
 }
 export function isGameState(value: unknown): value is GameState {
-  if (!isGameStateBase(value,5)) return false;
+  if (!isGameStateBase(value,6)) return false;
   const g=value as GameState;
+  if (!isGameMode(g.mode)) return false;
   if (!Array.isArray(g.globalEvents) || g.globalEvents.length>120) return false;
   if (!g.globalEvents.every((e,i)=>{
     if (!e || typeof e!=='object' || !EVENT_KINDS.includes(e.kind) || !COUNTRY_BY_ID[e.countryId] ||
@@ -352,15 +361,15 @@ export function isGameState(value: unknown): value is GameState {
 }
 export function restoreGame(value: unknown): GameState | null {
   if (isGameState(value)) return value;
-  const versions=[1,2,3,4] as const;
+  const versions=[1,2,3,4,5] as const;
   const version=versions.find(v=>isGameStateBase(value,v));
   if (!version) return null;
-  const old=value as Omit<GameState,'version'|'globalEvents'|'agent'> & {version:1|2|3|4;globalEvents?:GlobalEvent[];agent?:Omit<AgentState,'spentTactics'>};
+  const old=value as Omit<GameState,'version'|'mode'|'globalEvents'|'agent'> & {version:1|2|3|4|5;globalEvents?:GlobalEvent[];agent?:Omit<AgentState,'spentTactics'>};
   const countries=Object.fromEntries(COUNTRIES.map(c=>[c.id,{
     ...old.countries[c.id],
     government:version>=3?old.countries[c.id].government:{...initialGovernmentState(),since:old.day,until:old.day},
   }]));
   const agent=version>=2?old.agent:{name:'PROTOCOLO ZERO',attributes:{...DEFAULT_ATTRIBUTES},points:Math.floor(old.day/10)*2,purchased:[]};
-  const migrated:GameState={...old,version:5,globalEvents:version===4?(old.globalEvents??[]):[],countries,agent:{...agent!,spentTactics:0}};
+  const migrated:GameState={...old,version:6,mode:'classico',globalEvents:version>=4?(old.globalEvents??[]):[],countries,agent:version===5?(old.agent as AgentState):{...agent!,spentTactics:0}};
   return isGameState(migrated)?migrated:null;
 }
