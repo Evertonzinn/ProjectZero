@@ -44,7 +44,7 @@ import { adjustAttribute, availableUpgrade, buyUpgrade, getLabModifiers, restore
 
 test('pontos iniciais são limitados a oito e atributos travam após iniciar', () => {
   let g=createGame('BRA',3);
-  assert.equal(g.version,4);
+  assert.equal(g.version,5);
   assert.equal(g.agent.attributes.propagacao,2);
   g=adjustAttribute(g,'propagacao',1);
   g=adjustAttribute(g,'resistencia',1);
@@ -101,7 +101,7 @@ test('save versão 1 é migrado mantendo mapa, dia e seed',()=>{
   const legacy={...old,version:1,countries:Object.fromEntries(Object.entries(old.countries).map(([id,{government,...c}])=>[id,c]))};
   const restored=restoreGame(legacy);
   assert.ok(restored);
-  assert.equal(restored.version,4);
+  assert.equal(restored.version,5);
   assert.equal(restored.day,21);
   assert.equal(restored.seed,84);
   for(const c of COUNTRIES){
@@ -163,10 +163,10 @@ test('salvamento v2 migra para v3 sem perder laboratório, pesquisa e seed',()=>
   let g=startGame(createGame('BRA',12345));
   for(let i=0;i<23;i++)g=advanceDay(g);
   g=buyUpgrade(g,'correntes');
-  const legacy={...g,version:2,countries:Object.fromEntries(Object.entries(g.countries).map(([id,{government,...c}])=>[id,c]))};
+  const legacy={...g,version:2,agent:{name:g.agent.name,attributes:g.agent.attributes,points:g.agent.points,purchased:g.agent.purchased},countries:Object.fromEntries(Object.entries(g.countries).map(([id,{government,...c}])=>[id,c]))};
   const migrated=restoreGame(legacy);
   assert.ok(migrated);
-  assert.equal(migrated.version,4);
+  assert.equal(migrated.version,5);
   assert.equal(migrated.day,23);
   assert.equal(migrated.seed,12345);
   assert.deepEqual(migrated.agent,g.agent);
@@ -236,7 +236,7 @@ test('save v3 é migrado para v4 sem perder governos e pesquisas',()=>{
   const old={...legacyState,version:3};
   const restored=restoreGame(old);
   assert.ok(restored);
-  assert.equal(restored.version,4);
+  assert.equal(restored.version,5);
   assert.equal(restored.seed,g.seed);
   assert.equal(restored.day,g.day);
   assert.deepEqual(restored.countries,g.countries);
@@ -293,7 +293,7 @@ test('repetição preserva seed, país e atributos mas limpa progressão',()=>{
   for(let i=0;i<32&&game.phase==='running';i++)game=advanceDay(game);
   game=buyUpgrade(game,'correntes');
   const repeated=repeatSeed(game);
-  assert.equal(repeated.version,4);
+  assert.equal(repeated.version,5);
   assert.equal(repeated.phase,'setup');
   assert.equal(repeated.seed,9983);
   assert.equal(repeated.origin,'JPN');
@@ -327,4 +327,54 @@ test('linha do tempo só usa marcos registrados e mantém dias em ordem',()=>{
   assert.equal(marks.at(-1).day,game.day);
   assert.ok(marks.every((m,i)=>i===0||marks[i-1].day<=m.day));
   assert.ok(marks.every(m=>m.day<=game.day));
+});
+
+import { applyTactic, availableTactic } from '../.engine-build/engine/simulation.js';
+
+test('operações táticas gastam pontos, alteram o país e preservam integridade',()=>{
+ let g=startGame(createGame('BRA',987));
+ for(let i=0;i<20;i++)g=advanceDay(g);
+ assert.equal(g.agent.points,4);
+ assert.equal(availableTactic(g,'pulso','XYZ').ok,false);
+ assert.equal(availableTactic(g,'pulso','BRA').ok,true);
+ const before=g.countries.BRA.affected;
+ const other=g.countries.JPN.affected;
+ const after=applyTactic(g,'pulso','BRA');
+ assert.equal(after.agent.points,2);
+ assert.equal(after.agent.spentTactics,2);
+ assert.ok(after.countries.BRA.affected>before);
+ assert.equal(after.countries.JPN.affected,other);
+ assert.equal(after.history.at(-1).affected,g.history.at(-1).affected+(after.countries.BRA.affected-before));
+ assert.equal(isGameState(after),true);
+ assert.equal(restoreGame(JSON.parse(JSON.stringify(after))).agent.spentTactics,2);
+ assert.equal(applyTactic(after,'friccao','BRA'),after); // insuficiente
+});
+
+test('tática institucional é determinística, repetível e não aceita gasto depois do fim',()=>{
+ let g=startGame(createGame('BRA',11));
+ for(let i=0;i<40;i++)g=advanceDay(g);
+ let h=applyTactic(g,'friccao','BRA');
+ assert.equal(h.agent.spentTactics,3);
+ assert.equal(h.agent.points,g.agent.points-3);
+ assert.ok(h.countries.BRA.government.stability<=g.countries.BRA.government.stability);
+ assert.deepEqual(applyTactic(g,'friccao','BRA'),h);
+ assert.ok(isGameState(h));
+ while(h.phase==='running')h=advanceDay(h);
+ assert.equal(applyTactic(h,'pulso','BRA'),h);
+});
+
+test('save v4 migra para v5 com mesmo saldo e eventos; replays zeram gastos',()=>{
+ let g=startGame(createGame('BRA',530));
+ for(let i=0;i<25;i++)g=advanceDay(g);
+ const {spentTactics,...agent}=g.agent;
+ const legacy={...g,version:4,agent};
+ const restored=restoreGame(legacy);
+ assert.ok(restored);
+ assert.equal(restored.version,5);
+ assert.equal(restored.agent.spentTactics,0);
+ assert.deepEqual(restored.globalEvents,g.globalEvents);
+ assert.equal(isGameState(restored),true);
+ assert.equal(repeatSeed(restored).agent.spentTactics,0);
+ const bad={...restored,agent:{...restored.agent,spentTactics:2}};
+ assert.equal(isGameState(bad),false);
 });
