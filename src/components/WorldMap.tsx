@@ -1,188 +1,157 @@
-import { useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
+import { useRef, useState } from 'react';
+import type { PointerEvent } from 'react';
 import world from '../data/world.json';
-import { COUNTRIES, COUNTRY_BY_ID, ROUTES, project, type CountryId } from '../data/countries';
-import type { GameState } from '../simulation/engine';
+import { COUNTRIES, COUNTRY_BY_ID } from '../data/countries';
+import type { GameState } from '../engine/simulation';
 
-type Feature = { id: string; name: string; continent: string; path: string; x: number; y: number };
-type Camera = { zoom: number; centerX: number; centerY: number };
-type HoverState = { id: CountryId; x: number; y: number };
+const WIDTH=1600;
+const HEIGHT=720;
+const xy=([lon,lat]: readonly [number,number]): [number,number] => [((lon+180)/360)*WIDTH, ((85-lat)/145)*HEIGHT];
+const clamp = (value:number,min:number,max:number)=>Math.max(min,Math.min(value,max));
+const originMarker='M-5,0L0,-8L5,0L0,8Z';
 
-const features = world as Feature[];
-const reachable = new Set<string>(COUNTRIES.map((c) => c.id));
+export interface WorldMapProps {
+  game: GameState;
+  selected: string;
+  onSelect: (id:string)=>void;
+}
 
-function clamp(value: number, min: number, max: number) { return Math.max(min, Math.min(max, value)); }
-function constrain(camera: Camera): Camera {
-  return {
-    ...camera,
-    centerX: clamp(camera.centerX, 600 / camera.zoom, 1200 - 600 / camera.zoom),
-    centerY: clamp(camera.centerY, 300 / camera.zoom, 600 - 300 / camera.zoom),
+export function WorldMap({game,selected,onSelect}:WorldMapProps) {
+  const [zoom,setZoom]=useState(1);
+  const [center,setCenter]=useState<[number,number]>([WIDTH/2,HEIGHT/2]);
+  const [hovered,setHovered]=useState<string|null>(null);
+  const mapRef=useRef<SVGSVGElement>(null);
+  const drag=useRef<{x:number;y:number;cx:number;cy:number;distance:number}|null>(null);
+  const suppressClick=useRef(false);
+  const viewW=WIDTH/zoom;
+  const viewH=HEIGHT/zoom;
+  const x=clamp(center[0]-viewW/2,0,WIDTH-viewW);
+  const y=clamp(center[1]-viewH/2,0,HEIGHT-viewH);
+
+  const zoomTo=(newZoom:number)=> {
+    const z=clamp(newZoom,1,3.4);
+    setZoom(z);
+    setCenter([clamp(center[0],WIDTH/(2*z),WIDTH-WIDTH/(2*z)),clamp(center[1],HEIGHT/(2*z),HEIGHT-HEIGHT/(2*z))]);
   };
-}
-
-function createRoutePath(from: CountryId, to: CountryId): string {
-  const a = COUNTRY_BY_ID[from];
-  const b = COUNTRY_BY_ID[to];
-  const [x1, y1] = project(a.lon, a.lat);
-  const [x2, y2] = project(b.lon, b.lat);
-  const curvature = Math.min(105, 13 + Math.abs(x2 - x1) * 0.18);
-  return `M ${x1.toFixed(1)} ${y1.toFixed(1)} Q ${((x1 + x2) / 2).toFixed(1)} ${((y1 + y2) / 2 - curvature).toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
-}
-
-const renderedRoutes = ROUTES.map((route, index) => ({ ...route, path: createRoutePath(route.from, route.to), index }));
-
-export default function WorldMap({ state, selected, onSelect }: { state: GameState; selected: CountryId; onSelect: (id: CountryId) => void }) {
-  const frameRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const dragRef = useRef<null | { startX: number; startY: number; centerX: number; centerY: number; id: CountryId | null; moved: boolean }>(null);
-  const [camera, setCamera] = useState<Camera>({ zoom: 1, centerX: 600, centerY: 300 });
-  const [hover, setHover] = useState<HoverState | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const [showRoutes, setShowRoutes] = useState(true);
-
-  const viewBox = useMemo(() => {
-    const w = 1200 / camera.zoom;
-    const h = 600 / camera.zoom;
-    return `${camera.centerX - w / 2} ${camera.centerY - h / 2} ${w} ${h}`;
-  }, [camera]);
-
-  function zoom(amount: number) {
-    setCamera((c) => constrain({ ...c, zoom: clamp(c.zoom * amount, 1, 4) }));
-  }
-
-  function onWheel(event: WheelEvent<SVGSVGElement>) {
-    event.preventDefault();
-    zoom(event.deltaY < 0 ? 1.13 : 1 / 1.13);
-  }
-
-  function onPointerDown(event: PointerEvent<SVGSVGElement>) {
-    if (event.button !== 0) return;
-    const element = event.target as Element;
-    const id = element.closest('[data-country]')?.getAttribute('data-country') as CountryId | null;
-    dragRef.current = { startX: event.clientX, startY: event.clientY, centerX: camera.centerX, centerY: camera.centerY, id, moved: false };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function onPointerMove(event: PointerEvent<SVGSVGElement>) {
-    const rect = frameRef.current?.getBoundingClientRect();
-    if (rect && hover) {
-      setHover((h) => h ? { ...h, x: clamp(event.clientX - rect.left, 80, rect.width - 80), y: clamp(event.clientY - rect.top, 45, rect.height - 28) } : h);
+  const onPointerDown=(e:PointerEvent<SVGSVGElement>)=> {
+    if(e.button!==0) return;
+    drag.current={x:e.clientX,y:e.clientY,cx:center[0],cy:center[1],distance:0};
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove=(e:PointerEvent<SVGSVGElement>)=>{
+    const d=drag.current;
+    const bounds=mapRef.current?.getBoundingClientRect();
+    if(!d || !bounds) return;
+    d.distance=Math.max(d.distance,Math.hypot(e.clientX-d.x,e.clientY-d.y));
+    if(d.distance>4) {
+      setCenter([
+        clamp(d.cx-(e.clientX-d.x)*viewW/bounds.width,viewW/2,WIDTH-viewW/2),
+        clamp(d.cy-(e.clientY-d.y)*viewH/bounds.height,viewH/2,HEIGHT-viewH/2),
+      ]);
     }
-    const drag = dragRef.current;
-    if (!drag || !svgRef.current) return;
-    const diffX = event.clientX - drag.startX;
-    const diffY = event.clientY - drag.startY;
-    if (Math.hypot(diffX, diffY) > 5) drag.moved = true;
-    if (!drag.moved) return;
-    setDragging(true);
-    const renderedWidth = svgRef.current.getBoundingClientRect().width;
-    const factor = (1200 / camera.zoom) / renderedWidth;
-    setCamera((current) => constrain({ ...current, centerX: drag.centerX - diffX * factor, centerY: drag.centerY - diffY * factor }));
-  }
-
-  function onPointerUp(event: PointerEvent<SVGSVGElement>) {
-    const drag = dragRef.current;
-    if (drag && !drag.moved && drag.id && reachable.has(drag.id)) onSelect(drag.id);
-    dragRef.current = null;
-    setDragging(false);
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-  }
-
-  function cancelDrag() { dragRef.current = null; setDragging(false); }
-  const exposureOf = (id: CountryId) => state.countries[id]?.exposure ?? 0;
+  };
+  const onPointerUp=(e:PointerEvent<SVGSVGElement>)=>{
+    if(drag.current?.distance && drag.current.distance>4) suppressClick.current=true;
+    drag.current=null;
+    if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  };
+  const showCountry=(id:string)=>{
+    if(suppressClick.current){suppressClick.current=false;return;}
+    onSelect(id);
+  };
+  const lines=COUNTRIES.flatMap(country=>country.links.filter(id=>country.id<id && COUNTRY_BY_ID[id]).map(id=>[country.id,id] as const));
 
   return (
-    <section className="map-panel" aria-label="Mapa-múndi interativo do Project Zero">
-      <div className="map-header">
-        <div className="map-location"><span className="signal-dot" /> <span>WORLD SIMULATION</span><span className="map-slash">/</span> <strong>VISÃO GLOBAL</strong></div>
-        <div className="map-header-right"><span className="live-label">{state.status === 'running' ? '● EM EXECUÇÃO' : state.status === 'setup' ? '○ PRONTO PARA INICIAR' : '◉ SIMULAÇÃO PARADA'}</span><span className="map-day">DIA <b>{String(state.day).padStart(3, '0')}</b></span></div>
-      </div>
-      <div className="map-frame" ref={frameRef}>
-        <div className="map-corner map-corner-tl" /><div className="map-corner map-corner-tr" /><div className="map-corner map-corner-bl" /><div className="map-corner map-corner-br" />
-        <div className="map-top-hint"><span className="square-glyph">⌗</span> SETOR 01 <span className="map-hint-sep">•</span> PROJEÇÃO GLOBAL</div>
+    <div className="map-shell">
+      <div className="map-topline"><span className="led-dot"/> VISUALIZAÇÃO GLOBAL <span className="map-topline-right">18 REGIÕES MONITORADAS · MALHA ABSTRATA</span></div>
+      <div className="map-viewport">
         <svg
-          ref={svgRef} className={`world-svg ${dragging ? 'is-dragging' : ''}`} viewBox={viewBox}
-          preserveAspectRatio="xMidYMid meet" role="group" aria-label="Países selecionáveis do mundo"
-          onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp} onPointerCancel={cancelDrag} onPointerLeave={() => setHover(null)}
+          ref={mapRef}
+          className="world-svg"
+          viewBox={`${x} ${y} ${viewW} ${viewH}`}
+          preserveAspectRatio="xMidYMid meet"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          onClickCapture={e=>{if(suppressClick.current){suppressClick.current=false;e.stopPropagation();}}}
+          role="img"
+          aria-label="Mapa do mundo, países monitorados clicáveis"
         >
           <defs>
-            <radialGradient id="ocean-gradient"><stop offset="0%" stopColor="#102b38" /><stop offset="100%" stopColor="#071621" /></radialGradient>
-            <pattern id="map-grid" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M 60 0 L 0 0 0 60" fill="none" stroke="#51819a" strokeWidth="0.6" opacity="0.17" /></pattern>
-            <filter id="light-bloom" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="4.5" /></filter>
+            <radialGradient id="oceanLight"><stop stopColor="#132636"/><stop offset="1" stopColor="#0a1523"/></radialGradient>
+            <pattern id="seaNoise" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M0 0H40M0 0V40" fill="none" stroke="#84a9ba" strokeOpacity=".085" strokeWidth=".55"/></pattern>
+            <filter id="glow"><feGaussianBlur stdDeviation="6"/></filter>
           </defs>
-          <rect width="1200" height="600" fill="url(#ocean-gradient)" />
-          <rect width="1200" height="600" fill="url(#map-grid)" />
-          {Array.from({ length: 7 }, (_, i) => <line key={`lat-${i}`} x1="0" x2="1200" y1={i * 100} y2={i * 100} stroke="#346078" strokeDasharray="2 14" opacity="0.24" />)}
-          {features.map((feature) => {
-            const playable = reachable.has(feature.id);
-            const id = feature.id as CountryId;
-            const level = playable ? exposureOf(id) : 0;
-            const isSelected = selected === feature.id;
-            const isHovered = hover?.id === feature.id;
-            const fill = level >= 65 ? '#c45a47' : level >= 30 ? '#a76a47' : level > 0 ? '#52797b' : isSelected ? '#367882' : playable ? '#234150' : '#18313d';
-            return <path
-              key={feature.id} d={feature.path} fill={fill}
-              fillRule="evenodd" stroke={isSelected || isHovered ? '#a5f4df' : '#486779'}
-              strokeWidth={isSelected ? 1.8 : isHovered ? 1.15 : 0.75}
-              strokeOpacity={playable ? 0.8 : 0.39}
-              opacity={playable ? 1 : 0.74}
-              className={playable ? 'country-hitbox' : 'country-muted'}
-              data-country={playable ? feature.id : undefined}
-              role={playable ? 'button' : undefined}
-              tabIndex={playable ? 0 : undefined}
-              aria-label={playable ? `Selecionar ${COUNTRY_BY_ID[id].name}` : undefined}
-              aria-pressed={playable ? isSelected : undefined}
-              onKeyDown={playable ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(id); } } : undefined}
-              onFocus={playable ? () => setHover({ id, x: 180, y: 70 }) : undefined}
-              onBlur={playable ? () => setHover(null) : undefined}
-              onPointerEnter={playable ? (event) => {
-                const rect = frameRef.current?.getBoundingClientRect();
-                if (!rect) return;
-                setHover({ id, x: clamp(event.clientX - rect.left, 80, rect.width - 80), y: clamp(event.clientY - rect.top, 45, rect.height - 28) });
-              } : undefined}
-              onPointerLeave={playable ? () => { if (!dragRef.current) setHover(null); } : undefined}
-            />;
-          })}
-          {showRoutes && renderedRoutes.map((route) => {
-            const active = exposureOf(route.from) > 0 || exposureOf(route.to) > 0;
-            const connection = exposureOf(route.from) > 0 && exposureOf(route.to) > 0;
-            if (!active && ![0, 6, 10, 18, 20, 25, 30].includes(route.index)) return null;
-            return <g key={`${route.from}-${route.to}`} pointerEvents="none">
-              <path d={route.path} fill="none" stroke={connection ? '#ffad77' : active ? '#72d5be' : '#2a7b83'} strokeWidth={active ? 1.4 : 0.85} strokeDasharray={route.mode === 'sea' ? '3 5' : '4 7'} opacity={active ? 0.7 : 0.25} />
-              {active && <circle r={connection ? 2.7 : 2.1} fill={connection ? '#ffc19b' : '#b7fff1'}>
-                <animateMotion path={route.path} dur={`${(7 + route.index % 6) / (connection ? 1.3 : 1)}s`} repeatCount="indefinite" begin={`${-(route.index % 6)}s`} />
-              </circle>}
-            </g>;
-          })}
-          {COUNTRIES.map((country) => {
-            const [x, y] = project(country.lon, country.lat);
-            const infected = exposureOf(country.id) > 0;
-            const isSelected = country.id === selected;
-            return <g key={country.id} pointerEvents="none">
-              {infected && <circle cx={x} cy={y} r={7 + Math.min(9, exposureOf(country.id) / 10)} fill="#f7a86f" opacity="0.2" filter="url(#light-bloom)" />}
-              {infected && <circle cx={x} cy={y} r="8" fill="none" stroke="#ffb17c" strokeWidth="0.9" opacity="0.65" className="map-pulse" />}
-              {isSelected && <><circle cx={x} cy={y} r="13.5" fill="none" stroke="#a8f8e1" strokeWidth="1" strokeDasharray="3 4" /><circle cx={x} cy={y} r="19" fill="none" stroke="#84d5c9" strokeWidth="0.5" opacity="0.32" /></>}
-              <circle cx={x} cy={y} r={isSelected ? 4.8 : infected ? 3.6 : 2.15} fill={infected ? '#ffc092' : isSelected ? '#e1fff4' : '#6b9fac'} stroke="#102f3c" strokeWidth="1.2" />
-            </g>;
-          })}
+          <rect width="1600" height="720" fill="url(#oceanLight)"/>
+          <rect width="1600" height="720" fill="url(#seaNoise)"/>
+          <g className="meridians" stroke="#6f94a7" strokeOpacity=".10" strokeDasharray="3 8" fill="none">
+            {Array.from({length:11},(_,i)=><path key={`v${i}`} d={`M${(i+1)*133.33} 0V720`}/>)}
+            {Array.from({length:6},(_,i)=><path key={`h${i}`} d={`M0 ${(i+1)*102.86}H1600`}/>)}
+          </g>
+          <g>
+            {world.map(country=>{
+              const playable=COUNTRY_BY_ID[country.id];
+              const st=playable && game.countries[country.id];
+              const intensity=st && playable ? st.affected/playable.population : 0;
+              const level=intensity===0?0:intensity<.0005?1:intensity<.01?2:intensity<.075?3:4;
+              return <path
+                key={`${country.id}-${country.name}`}
+                d={country.d}
+                fillRule="evenodd"
+                className={`country ${playable?'country-playable':'country-inactive'} ${level?`level-${level}`:''} ${selected===country.id?'country-selected':''}`}
+                onMouseEnter={()=>{if(playable)setHovered(country.id);}}
+                onMouseLeave={()=>setHovered(null)}
+                onClick={playable?()=>showCountry(country.id):undefined}
+                onKeyDown={playable?(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onSelect(country.id);}}:undefined}
+                tabIndex={playable?0:undefined}
+                role={playable?'button':undefined}
+                aria-label={playable?`Selecionar ${playable.name}`:undefined}
+              ><title>{playable?`${playable.name} — clique para detalhes`:country.name}</title></path>;
+            })}
+          </g>
+          <g className="network-links" pointerEvents="none" fill="none" strokeDasharray="5 8">
+            {lines.map(([from,to])=>{
+              const a=xy(COUNTRY_BY_ID[from].position);
+              const b=xy(COUNTRY_BY_ID[to].position);
+              const active=game.countries[from].affected>0 && game.countries[to].affected>0;
+              const midX=(a[0]+b[0])/2;
+              const midY=(a[1]+b[1])/2-Math.min(90,Math.abs(a[0]-b[0])*.12);
+              return <path key={`${from}-${to}`} d={`M${a[0]},${a[1]}Q${midX},${midY} ${b[0]},${b[1]}`} stroke={active?'#e7a56e':'#5b91ab'} strokeWidth={active?1.7:.75} opacity={active?.62:.15}/>;
+            })}
+          </g>
+          <g pointerEvents="none">
+            {COUNTRIES.map(country=>{
+              const st=game.countries[country.id];
+              const [px,py]=xy(country.position);
+              const active=st.affected>0;
+              const chosen=selected===country.id;
+              return <g key={country.id} transform={`translate(${px} ${py})`}>
+                {active&&<circle r={16} fill="#eb7d67" opacity=".28" filter="url(#glow)"/>}
+                {active&&<circle r={10} fill="none" stroke="#ff9e80" strokeOpacity=".6" strokeWidth=".9" className="map-pulse"/>}
+                {chosen&&<circle r={16} fill="none" stroke="#b7f56b" strokeWidth="1.4" strokeDasharray="3 4"/>}
+                <circle r={chosen?5.4:active?4.3:3.2} fill={active?'#ffa07e':chosen?'#baf675':'#7fb7d1'} stroke="#0d1a26" strokeWidth="1.6"/>
+                {game.origin===country.id&&<path d={originMarker} fill="none" stroke="#caff80" opacity=".95" strokeWidth="1.4" transform="translate(0,-14) scale(.75)"/>}
+              </g>;
+            })}
+          </g>
+          <g pointerEvents="none" fontFamily="monospace" fontSize="13" letterSpacing="1.5" fill="#7491a5" opacity=".72">
+            <text x="150" y="240">PACÍFICO</text><text x="640" y="390">ATLÂNTICO</text><text x="1165" y="560">ÍNDICO</text>
+          </g>
         </svg>
-        {hover && <div className="map-tooltip" style={{ left: hover.x, top: hover.y }} role="status">
-          <strong>{COUNTRY_BY_ID[hover.id].flag} {COUNTRY_BY_ID[hover.id].name}</strong>
-          <span>Atividade: {exposureOf(hover.id).toFixed(1)}%</span>
-          <small>Selecionar país ↗</small>
-        </div>}
-        <div className="map-compass"><span>N</span><span className="compass-cross">✥</span><span>S</span></div>
-        <div className="map-bottom-ui">
-          <div className="map-legend"><span><i className="legend-dot legend-idle" /> NÃO ATINGIDO</span><span><i className="legend-dot legend-affected" /> EM EXPANSÃO</span><span><i className="legend-dot legend-critical" /> ATIVIDADE ELEVADA</span></div>
-          <div className="map-zoom-controls">
-            <button type="button" onClick={() => setShowRoutes((prev) => !prev)} className={showRoutes ? 'toggle-routes is-on' : 'toggle-routes'} aria-pressed={showRoutes} title="Mostrar ou ocultar rotas">ROTAS {showRoutes ? 'ON' : 'OFF'}</button>
-            <button type="button" onClick={() => zoom(1.35)} aria-label="Aproximar mapa" title="Aproximar">+</button>
-            <button type="button" onClick={() => zoom(1 / 1.35)} aria-label="Afastar mapa" title="Afastar">−</button>
-            <button type="button" onClick={() => setCamera({ zoom: 1, centerX: 600, centerY: 300 })} aria-label="Recentralizar mapa" title="Recentralizar">⌖</button>
-          </div>
+        <div className="map-controls" aria-label="Controles de zoom">
+          <button type="button" onClick={()=>zoomTo(zoom+.4)} aria-label="Aproximar">+</button>
+          <button type="button" onClick={()=>zoomTo(zoom-.4)} aria-label="Afastar">−</button>
+          <button type="button" onClick={()=>{setZoom(1);setCenter([800,360]);}} aria-label="Recentralizar" title="Visão global">⌖</button>
         </div>
+        <div className="map-coordinate">ZOOM {zoom.toFixed(1)}× <span>·</span> ARRASTE PARA EXPLORAR</div>
+        {hovered && <div className="hover-chip">{COUNTRY_BY_ID[hovered].flag} {COUNTRY_BY_ID[hovered].name}</div>}
+        {game.phase==='setup'&&<div className="map-intro"><span className="map-intro-index">01 / ESCOLHA A ORIGEM</span><strong>Clique em um país para começar</strong><span>Depois, inicie a simulação no painel lateral.</span></div>}
       </div>
-      <div className="map-footer"><span>⌘ CLIQUE PARA SELECIONAR <span className="foot-divider">/</span> ARRASTE PARA NAVEGAR <span className="foot-divider">/</span> SCROLL PARA ZOOM</span><span>20 PAÍSES ATIVOS <span className="foot-divider">·</span> 177 TERRITÓRIOS NO MAPA</span></div>
-    </section>
+      <div className="map-footer">
+        <div className="map-legend"><span className="legend-dot base"/> Sem atividade <span className="legend-dot low"/> Sinal inicial <span className="legend-dot medium"/> Expansão <span className="legend-dot high"/> Crise elevada</div>
+        <div className="map-footer-right">MAPA VETORIAL · NÃO EPIDEMIOLÓGICO</div>
+      </div>
+    </div>
   );
 }

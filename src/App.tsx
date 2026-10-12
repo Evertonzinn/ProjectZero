@@ -1,153 +1,185 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import WorldMap from './components/WorldMap';
-import { COUNTRIES, COUNTRY_BY_ID, type CountryId } from './data/countries';
-import { createGame, getGlobalStats, simulateDay, startGame, type GameState, type Traits } from './simulation/engine';
+import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import { WorldMap } from './components/WorldMap';
+import { TrendChart } from './components/TrendChart';
+import { Laboratory } from './components/Laboratory';
+import { GovernmentDetail, WorldIntelligence } from './components/WorldIntelligence';
+import type { AttributeId, UpgradeId } from './engine/laboratory';
+import { COUNTRIES, COUNTRY_BY_ID } from './data/countries';
+import { adjustAttribute, advanceDay, buyUpgrade, changeOrigin, createGame, getWorldStats, restoreGame, setAgentName, startGame } from './engine/simulation';
+import type { GameState, Policy } from './engine/simulation';
 
-function Icon({ name, size = 18 }: { name: 'globe' | 'activity' | 'shield' | 'flask' | 'terminal' | 'chevron' | 'pause' | 'play' | 'refresh' | 'radar' | 'settings' | 'arrow'; size?: number }) {
-  const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true as const };
-  const paths = {
-    globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></>,
-    activity: <><path d="M3 12h4l3-7 4 14 3-7h4" /></>,
-    shield: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></>,
-    flask: <><path d="M9 3h6M10 3v6l-6 9a2 2 0 0 0 1.8 3h12.4A2 2 0 0 0 20 18l-6-9V3M7.4 15h9.2" /></>,
-    terminal: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="m7 9 3 3-3 3M12 16h5" /></>,
-    chevron: <><path d="m9 18 6-6-6-6" /></>,
-    pause: <><path d="M9 5v14M15 5v14" strokeWidth="3" /></>,
-    play: <><path d="m8 5 12 7-12 7V5Z" fill="currentColor" stroke="none" /></>,
-    refresh: <><path d="M3 12a9 9 0 0 1 15.5-6.1L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.1L3 16M3 21v-5h5" /></>,
-    radar: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><path d="m12 12 6-6" /></>,
-    settings: <><path d="M4 8h16M4 16h16" /><circle cx="9" cy="8" r="2" fill="currentColor" /><circle cx="16" cy="16" r="2" fill="currentColor" /></>,
-    arrow: <><path d="M4 12h16m-7-7 7 7-7 7" /></>,
+const SAVE_KEY='project-zero-save-v1';
+const num=new Intl.NumberFormat('pt-BR');
+const decimal=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2});
+const percent=(v:number)=>`${decimal.format(v)}%`;
+const policyLabel:Record<Policy,string>={normal:'Monitoramento',atencao:'Alerta preventivo',restricoes:'Restrições',emergencia:'Emergência'};
+const categoryLabel={alerta:'ALERTA',pesquisa:'PESQUISA',governo:'GOVERNO',mundo:'GLOBAL'};
+const nowSeed=()=>Math.floor(Date.now()%2_000_000_000);
+
+function StatBar({value,color='green'}:{value:number;color?:'green'|'orange'|'blue'}) {
+  return <div className="bar-track"><div className={`bar-fill bar-${color}`} style={{width:`${Math.max(0,Math.min(100,value))}%`}}/></div>;
+}
+function Icon({name}:{name:'globe'|'pause'|'play'|'step'|'save'|'reset'|'upload'}) {
+  const common={width:17,height:17,fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round' as const,strokeLinejoin:'round' as const};
+  const paths:{[key:string]:ReactNode}={
+    globe:<><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c6 5 6 13 0 18M12 3c-6 5-6 13 0 18"/></>,
+    pause:<><path d="M8 5v14M16 5v14"/></>, play:<path d="m8 5 11 7-11 7z"/>,
+    step:<><path d="m5 5 10 7-10 7zM19 5v14"/></>,
+    save:<><path d="M5 3h12l4 4v14H3V3h2zM7 3v7h10V3M7 21v-8h10v8"/></>,
+    reset:<><path d="M4 11a8 8 0 1 0 2-5M4 4v6h6"/></>,
+    upload:<><path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5"/></>,
   };
-  return <svg {...common}>{paths[name]}</svg>;
-}
-
-function StatCard({ label, value, suffix, icon, foot, tone = 'teal' }: { label: string; value: string; suffix?: string; icon: 'globe' | 'activity' | 'shield' | 'flask'; foot: string; tone?: 'teal' | 'orange' | 'blue' }) {
-  return <div className={`stat-card stat-${tone}`}>
-    <div className="stat-heading"><span>{label}</span><span className="stat-icon"><Icon name={icon} size={19} /></span></div>
-    <div className="stat-value">{value}<small>{suffix}</small></div>
-    <div className="stat-foot"><span className="foot-pip" />{foot}</div>
-  </div>;
-}
-
-function TraitControl({ name, value, onChange, label, description }: { name: keyof Traits; value: number; onChange: (key: keyof Traits, value: number) => void; label: string; description: string }) {
-  return <div className="trait-field">
-    <div className="trait-label"><label htmlFor={`trait-${name}`}>{label}</label><strong>{String(value).padStart(2, '0')} <span>/10</span></strong></div>
-    <input id={`trait-${name}`} type="range" min={1} max={10} step={1} value={value} onChange={(e) => onChange(name, Number(e.currentTarget.value))} style={{ '--range-progress': `${((value - 1) / 9) * 100}%` } as CSSProperties} />
-    <small>{description}</small>
-  </div>;
-}
-
-const RATE_OPTIONS = [1, 2, 4] as const;
-const RATE_INTERVAL: Record<number, number> = { 1: 920, 2: 460, 4: 230 };
-
-function GameSidebar({ game, selected, speed, onStart, onToggle, onReset, onSpeed, onName, onTrait, onSelectCountry }: {
-  game: GameState; selected: CountryId; speed: number; onStart: () => void; onToggle: () => void; onReset: () => void;
-  onSpeed: (value: number) => void; onName: (value: string) => void; onTrait: (key: keyof Traits, value: number) => void; onSelectCountry: (id: CountryId) => void;
-}) {
-  const country = COUNTRY_BY_ID[selected];
-  const stats = game.countries[selected];
-  const setup = game.status === 'setup';
-  const playing = game.status === 'running';
-  const finished = game.status === 'victory' || game.status === 'defeat';
-  const activity = stats.exposure === 0 ? 'SEM ATIVIDADE' : stats.exposure > 65 ? 'NÍVEL CRÍTICO' : stats.exposure > 30 ? 'EM EXPANSÃO' : 'MONITORADO';
-
-  return <aside className="sidebar">
-    <div className="side-card control-card">
-      <div className="card-eyebrow"><Icon name="terminal" size={15} /> CONTROLE DE SIMULAÇÃO <span className="mini-index">01</span></div>
-      <div className="control-head">
-        <div><div className="eyebrow-muted">{setup ? 'CONFIGURAÇÃO DA PARTIDA' : 'AGENTE EM SIMULAÇÃO'}</div><h2>{setup ? 'Configurar agente' : game.agentName}</h2></div>
-        <span className={`control-status ${playing ? 'status-running' : ''}`}>{setup ? 'AGUARDANDO' : playing ? 'ATIVO' : finished ? 'ENCERRADO' : 'PAUSADO'}</span>
-      </div>
-      {setup ? <>
-        <div className="form-field"><label htmlFor="agent-name">IDENTIFICAÇÃO DO AGENTE</label><input id="agent-name" type="text" value={game.agentName} maxLength={24} spellCheck={false} onChange={(event) => onName(event.currentTarget.value)} placeholder="Ex.: ZERO-01" /></div>
-        <div className="agent-traits">
-          <TraitControl name="spread" value={game.traits.spread} onChange={onTrait} label="Propagação" description="Altera o ritmo de expansão no jogo" />
-          <TraitControl name="stealth" value={game.traits.stealth} onChange={onTrait} label="Discrição" description="Retarda a resposta global fictícia" />
-          <TraitControl name="endurance" value={game.traits.endurance} onChange={onTrait} label="Resiliência" description="Influencia o crescimento do agente" />
-        </div>
-        <div className="selected-origin"><span>PAÍS DE ORIGEM</span><strong>{COUNTRY_BY_ID[game.source].flag} {COUNTRY_BY_ID[game.source].name}</strong><small>Altere clicando no mapa.</small></div>
-        <button className="primary-button" onClick={onStart} disabled={!game.agentName.trim()}><Icon name="play" size={16} /> INICIAR SIMULAÇÃO <Icon name="arrow" size={17} /></button>
-      </> : <>
-        <div className="run-mini-stats"><div><span>PARTIDA</span><strong>{String(game.day).padStart(3, '0')} <small>DIAS</small></strong></div><div><span>CARACTERÍSTICAS</span><strong>{game.traits.spread} / {game.traits.stealth} / {game.traits.endurance}</strong></div></div>
-        {finished && <div className={`game-result ${game.status === 'victory' ? 'result-win' : ''}`}><strong>{game.status === 'victory' ? 'OBJETIVO ATINGIDO' : 'CONTRAMEDIDA CONCLUÍDA'}</strong><span>{game.status === 'victory' ? 'A expansão atingiu 16 países com atividade elevada.' : 'A pesquisa global chegou a 100%.'}</span></div>}
-        <div className="simulation-actions"><button className="primary-button" onClick={onToggle} disabled={finished}><Icon name={playing ? 'pause' : 'play'} size={16} /> {playing ? 'PAUSAR SIMULAÇÃO' : 'CONTINUAR SIMULAÇÃO'}</button><button className="reset-button" onClick={onReset} title="Reiniciar partida" aria-label="Reiniciar partida"><Icon name="refresh" size={17} /></button></div>
-        <div className="speed-row"><span>VELOCIDADE DA PARTIDA</span><div className="speed-options">{RATE_OPTIONS.map((n) => <button key={n} className={speed === n ? 'speed-active' : ''} onClick={() => onSpeed(n)} aria-pressed={speed === n}>{n}×</button>)}</div></div>
-      </>}
-    </div>
-    <div className="side-card country-card">
-      <div className="card-eyebrow"><Icon name="radar" size={15} /> DADOS DO TERRITÓRIO <span className="mini-index">02</span></div>
-      <div className="country-switcher"><label htmlFor="country-picker">SELECIONAR TERRITÓRIO</label><select id="country-picker" value={selected} onChange={(event) => onSelectCountry(event.currentTarget.value as CountryId)}>{COUNTRIES.map(({ id, name, flag }) => <option key={id} value={id}>{flag} {name}</option>)}</select></div>
-      <div className="selected-country-name"><span className="country-flag" aria-hidden="true">{country.flag}</span><div><h2>{country.name}</h2><span>{country.region} <span className="dot-spacer">•</span> {country.id}</span></div></div>
-      <div className="country-state"><span className={`small-led ${stats.exposure > 0 ? 'led-warm' : ''}`} /> {activity}</div>
-      <div className="progress-head"><span>ÍNDICE DE ATIVIDADE</span><strong>{stats.exposure.toFixed(1)}%</strong></div>
-      <div className="progress-track"><div className="progress-fill exposure-fill" style={{ width: `${stats.exposure}%` }} /></div>
-      <div className="country-data-grid"><div><span>DEFESA*</span><strong>{country.defense}<small>/100</small></strong></div><div><span>CONEXÕES*</span><strong>{country.connectivity}<small>/100</small></strong></div><div><span>RESPOSTA</span><strong>{stats.alert.toFixed(0)}<small>/100</small></strong></div></div>
-      {setup && <p className="country-tip"><span>↗</span> Clique em qualquer um dos 20 países destacados para definir o ponto de partida.</p>}
-    </div>
-    <div className="side-card cure-card">
-      <div className="card-eyebrow"><Icon name="flask" size={15} /> RESPOSTA GLOBAL <span className="mini-index">03</span></div>
-      <div className="cure-head"><div><span>PROGRESSO DA PESQUISA</span><strong>{game.research.toFixed(1)}%</strong></div><div className="research-icon"><Icon name="flask" size={25} /></div></div>
-      <div className="progress-track research-track"><div className="progress-fill research-fill" style={{ width: `${game.research}%` }} /></div>
-      <div className="cure-leader"><span>CENTRO DE PESQUISA LÍDER</span><strong>{game.research >= 50 ? `${COUNTRY_BY_ID[game.cureLeader].flag} ${COUNTRY_BY_ID[game.cureLeader].name}` : 'DESCONHECIDO'} <span>{game.research >= 50 ? 'IDENTIFICADO' : 'AGUARDANDO SINAL'}</span></strong></div>
-    </div>
-  </aside>;
-}
-
-function EventsLog({ game }: { game: GameState }) {
-  const events = game.events.slice(0, 5);
-  return <section className="event-panel"><div className="events-head"><div><Icon name="activity" size={17} /><h2>Feed de inteligência</h2><span>EVENTOS EM TEMPO REAL</span></div><span className="events-count">{String(game.events.length).padStart(2, '0')} REGISTROS</span></div>
-    <div className="event-list">{events.length === 0 ? <div className="no-events"><Icon name="radar" size={23} /><div><strong>Sistema aguardando ativação</strong><span>Os acontecimentos da simulação aparecerão neste painel.</span></div></div> : events.map((event) => <div key={event.id} className="event-row"><span className={`event-mark mark-${event.kind}`} /><span className="event-day">DIA {String(event.day).padStart(3, '0')}</span><div><strong>{event.title}</strong><span>{event.detail}</span></div><Icon name="chevron" size={15} /></div>)}</div>
-  </section>;
+  return <svg viewBox="0 0 24 24" {...common} aria-hidden="true">{paths[name]}</svg>;
 }
 
 export default function App() {
-  const [game, setGame] = useState<GameState>(() => createGame());
-  const [selected, setSelected] = useState<CountryId>('BRA');
-  const [speed, setSpeed] = useState<number>(1);
-  const global = useMemo(() => getGlobalStats(game), [game]);
+  const [game,setGame]=useState<GameState>(()=>createGame('BRA',nowSeed()));
+  const [selected,setSelected]=useState('BRA');
+  const [playing,setPlaying]=useState(false);
+  const [speed,setSpeed]=useState<1|5|20>(1);
+  const [notice,setNotice]=useState('');
+  const [labOpen,setLabOpen]=useState(false);
+  const [newsTab,setNewsTab]=useState<'all'|'alerta'|'pesquisa'>('all');
+  const stats=useMemo(()=>getWorldStats(game),[game]);
+  const country=COUNTRY_BY_ID[selected];
+  const countryState=game.countries[selected];
+  const countryPct=(countryState.affected/country.population)*100;
+  const started=game.phase!=='setup';
+  const ended=game.phase==='contained'||game.phase==='overwhelmed';
 
-  useEffect(() => {
-    if (game.status !== 'running') return;
-    const timer = window.setInterval(() => setGame((previous) => simulateDay(previous)), RATE_INTERVAL[speed]);
-    return () => window.clearInterval(timer);
-  }, [game.status, speed]);
+  useEffect(()=>{
+    if(!playing||game.phase!=='running')return;
+    const timer=window.setInterval(()=>setGame(g=>advanceDay(g)),speed===1?850:speed===5?170:50);
+    return ()=>window.clearInterval(timer);
+  },[playing,speed,game.phase]);
+  useEffect(()=>{
+    if(ended)setPlaying(false);
+  },[ended]);
 
-  function selectCountry(id: CountryId) {
+  const selectCountry=(id:string)=>{
+    if(game.phase==='setup')setGame(current=>changeOrigin(current,id));
     setSelected(id);
-    setGame((previous) => previous.status === 'setup' ? { ...previous, source: id } : previous);
-  }
+    setNotice('');
+  };
+  const openLab=()=>{setPlaying(false);setLabOpen(true);};
+  const begin=()=>{
+    setGame(current=>startGame(current));
+    setPlaying(true);
+    setNotice('Simulação iniciada.');
+  };
+  const reset=()=>{
+    if(started && !window.confirm('Reiniciar a simulação? O progresso não salvo será perdido.'))return;
+    setPlaying(false);
+    setLabOpen(false);
+    setGame(createGame(selected,nowSeed()));
+    setNotice('Novo cenário pronto. Selecione a origem e inicie.');
+  };
+  const save=()=>{
+    try { localStorage.setItem(SAVE_KEY,JSON.stringify(game));setNotice('Partida salva neste navegador.'); }
+    catch {setNotice('Não foi possível salvar neste navegador.');}
+  };
+  const load=()=>{
+    try {
+      const content=localStorage.getItem(SAVE_KEY);
+      if(!content){setNotice('Nenhuma partida salva encontrada.');return;}
+      const parsed:unknown=JSON.parse(content);
+      const restored=restoreGame(parsed);
+      if(!restored){setNotice('Save incompatível ou inválido.');return;}
+      setPlaying(false);setLabOpen(false);setGame(restored);setSelected(restored.origin);setNotice((parsed as {version?:number}).version===1?'Save antigo migrado.':'Partida restaurada.');
+    }catch{setNotice('Não foi possível carregar o save.');}
+  };
+  const news=game.news.filter(item=>newsTab==='all'||item.category===newsTab).slice(0,6);
 
-  function updateTrait(key: keyof Traits, value: number) {
-    setGame((previous) => previous.status === 'setup' ? { ...previous, traits: { ...previous.traits, [key]: value } } : previous);
-  }
+  return <div className="app">
+    <header className="topbar">
+      <div className="brand"><div className="brand-mark"><Icon name="globe"/></div><div className="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div>
+      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.3.0</span></span></div>
+      <div className="topright"><span className="server-dot"/><span>SIMULAÇÃO LOCAL</span><span className="top-date">SEED #{game.seed}</span></div>
+    </header>
 
-  function toggleGame() {
-    setGame((previous) => ({ ...previous, status: previous.status === 'running' ? 'paused' : previous.status === 'paused' ? 'running' : previous.status }));
-  }
+    <div className="page-body">
+      <div className="eyebrow-row"><span>PAINEL DE OPERAÇÕES <b>/</b> MAPA GLOBAL</span><span className="scenario-id">CENÁRIO <b>ZERO / 001</b></span></div>
+      <section className="headline">
+        <div><h1>O mundo é seu tabuleiro<span className="headline-dot">.</span></h1><p>Uma simulação fictícia. Dezoito nações, decisões imprevisíveis, consequências em cadeia.</p></div>
+        <div className="day-highlight"><span>DIA DA SIMULAÇÃO</span><strong>{String(game.day).padStart(3,'0')}</strong><div className="status-meta"><span className={`status-led ${playing?'live':''}`}/>{ended?'ENCERRADO':playing?'EM EXECUÇÃO':started?'PAUSADO':'AGUARDANDO INÍCIO'}</div></div>
+      </section>
 
-  function resetGame() {
-    setGame(createGame());
-    setSelected('BRA');
-    setSpeed(1);
-  }
+      <section className="kpi-row" aria-label="Indicadores globais">
+        <div className="kpi"><div className="kpi-heading"><span>POPULAÇÃO SIMULADA</span><span className="kpi-symbol">◈</span></div><strong>{decimal.format(stats.population/1_000_000_000)} <small>bi</small></strong><span className="kpi-foot">TOTAL NOS 18 PAÍSES</span></div>
+        <div className="kpi"><div className="kpi-heading"><span>POPULAÇÃO IMPACTADA</span><span className="kpi-symbol orange">◉</span></div><strong>{num.format(stats.affected)}</strong><span className="kpi-foot"><span className="orange-text">{percent(stats.affectedPct)}</span> DA POPULAÇÃO</span></div>
+        <div className="kpi"><div className="kpi-heading"><span>PAÍSES EM CRISE</span><span className="kpi-symbol blue">◎</span></div><strong>{String(stats.activeCountries).padStart(2,'0')} <small>/ 18</small></strong><span className="kpi-foot">REGIÕES MONITORADAS</span></div>
+        <div className="kpi"><div className="kpi-heading"><span>RESPOSTA CIENTÍFICA</span><span className="kpi-symbol green">⬡</span></div><strong>{percent(stats.research)}</strong><StatBar value={stats.research}/></div>
+      </section>
 
-  return <div className="app-shell">
-    <header className="topbar"><div className="topbar-inner">
-      <div className="brand"><div className="brand-mark"><span>0</span><i /></div><div className="brand-text"><strong>PROJECT<span>ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div>
-      <div className="topbar-section"><span className="nav-active"><Icon name="globe" size={16} /> MAPA GLOBAL</span><span className="topbar-divider" /><span className="nav-disabled"><Icon name="settings" size={16} /> MOTOR V0.1</span></div>
-      <div className="topbar-right"><span className="build-badge"><span className="signal-dot" /> SYSTEM ONLINE</span><span className="topbar-version">BUILD 0.1.0 / ALPHA</span></div>
-    </div></header>
-    <main className="main-content">
-      <div className="page-header"><div className="page-title"><div className="page-eyebrow"><span className="line-dash" /> OPERATION CENTER / <span>PROJECT ZERO</span></div><h1>Visão global <span className="header-star">✳</span></h1><p>Monitore o mundo. Escolha sua origem. Cada decisão altera a simulação.</p></div><div className="page-id"><span>WORLD INTERFACE</span><strong>01 <span>/</span> 04</strong></div></div>
-      <div className="stats-grid">
-        <StatCard label="TERRITÓRIOS ALCANÇADOS" value={String(global.reached).padStart(2, '0')} suffix={`/ ${COUNTRIES.length}`} icon="globe" foot="Países no cenário atual" />
-        <StatCard label="ATIVIDADE GLOBAL" value={global.exposure.toFixed(1)} suffix="%" icon="activity" foot="Índice abstrato de expansão" tone="orange" />
-        <StatCard label="MEDIDAS DE CONTENÇÃO" value={String(global.alerts).padStart(2, '0')} suffix="países" icon="shield" foot="Territórios em alerta elevado" tone="blue" />
-        <StatCard label="PESQUISA GLOBAL" value={game.research.toFixed(1)} suffix="%" icon="flask" foot="Corrida pela contramedida" tone="teal" />
+      <div className="workspace">
+        <aside className="sidebar left-sidebar">
+          <div className="panel-heading"><span className="heading-square"/> CONTROLE DE CENÁRIO <span className="panel-number">01</span></div>
+          <div className="scenario-panel">
+            <div className="small-label">PROTOCOLO ATUAL</div><div className="scenario-badge"><span className="tiny-glow"/> ZERO — SIMULAÇÃO</div>
+            <p>Escolha onde o evento fictício começa e observe as reações globais ao longo dos dias.</p>
+            <div className="fine-divider"/>
+            <div className="small-label">PAÍS DE ORIGEM</div>
+            <label className="field-wrap"><span className="flag">{COUNTRY_BY_ID[game.origin].flag}</span><select value={game.origin} disabled={started} onChange={e=>selectCountry(e.target.value)} aria-label="País de origem">
+              {COUNTRIES.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}
+            </select><span className="field-chevron">⌄</span></label>
+            <div className="seed-row"><span>SEED DO CENÁRIO</span><span>#{game.seed}</span></div>
+            <button className="lab-launch" onClick={openLab} type="button"><span className="lab-launch-icon">⬡</span><span><strong>LABORATÓRIO ZERO</strong><small>{game.agent.name||'PROTOCOLO SEM NOME'} · {game.agent.purchased.length} MELHORIAS</small></span><span className="lab-launch-arrow">↗</span></button>
+            {game.agent.points>0&&<div className="lab-alert">◆ {game.agent.points} ponto(s) de evolução disponível(is)</div>}
+            {!started?<button className="primary-btn" onClick={begin} type="button"><Icon name="play"/> INICIAR SIMULAÇÃO <span>↗</span></button>:<button className="outline-btn full-width" onClick={reset} type="button"><Icon name="reset"/> NOVA PARTIDA</button>}
+            {ended&&<div className="outcome-box"><strong>{game.phase==='contained'?'CONTENÇÃO CIENTÍFICA':'CRISE GLOBAL'}</strong><span>Simulação encerrada no dia {game.day}.</span></div>}
+          </div>
+          <div className="panel-heading secondary"><span className="heading-square"/> CONTROLES RÁPIDOS <span className="panel-number">02</span></div>
+          <div className="quick-panel"><button onClick={save} type="button"><Icon name="save"/> Salvar partida <span>⌘</span></button><button onClick={load} type="button"><Icon name="upload"/> Carregar partida <span>↗</span></button><button onClick={reset} type="button"><Icon name="reset"/> Reiniciar cenário <span>↺</span></button></div>
+          <div className="sidebar-note"><span className="note-mark">!</span><p>Protótipo estratégico. Todas as estatísticas, decisões e conexões são abstrações de gameplay.</p></div>
+        </aside>
+
+        <main className="mainstage">
+          <WorldMap game={game} selected={selected} onSelect={selectCountry}/>
+          <div className="playback">
+            <div className="playback-title"><span>CONTROLE TEMPORAL</span><strong>DIA {String(game.day).padStart(3,'0')}</strong></div>
+            <div className="playback-buttons"><button type="button" className="lab-quick" onClick={openLab} title="Abrir laboratório">⬡ LABORATÓRIO {game.agent.points>0?`· ${game.agent.points} PT`:""}</button>
+              <button className="round-play" type="button" disabled={!started||ended} aria-label={playing?'Pausar':'Continuar'} onClick={()=>setPlaying(p=>!p)}>{playing?<Icon name="pause"/>:<Icon name="play"/>}</button>
+              <button className="step-btn" type="button" disabled={game.phase!=='running'} onClick={()=>{setPlaying(false);setGame(g=>advanceDay(g));}}><Icon name="step"/> PRÓXIMO DIA</button>
+              <span className="playback-separator"/>
+              <span className="speed-caption">VELOCIDADE</span>
+              <div className="speed-group" role="group" aria-label="Velocidade da simulação">{([1,5,20] as const).map(n=><button key={n} className={speed===n?'active':''} onClick={()=>setSpeed(n)} type="button">{n}×</button>)}</div>
+            </div>
+            {notice&&<div className="notification" role="status">{notice}</div>}
+          </div>
+          <div className="bottom-panels">
+            <TrendChart history={game.history}/>
+            <div className="news-shell">
+              <div className="news-header"><span>BOLETIM GLOBAL</span><span className="news-total">{game.news.length} EVENTOS</span></div>
+              <div className="news-tabs" role="group" aria-label="Filtrar notícias"><button type="button" className={newsTab==='all'?'active':''} onClick={()=>setNewsTab('all')}>TODOS</button><button type="button" className={newsTab==='alerta'?'active':''} onClick={()=>setNewsTab('alerta')}>ALERTAS</button><button type="button" className={newsTab==='pesquisa'?'active':''} onClick={()=>setNewsTab('pesquisa')}>CIÊNCIA</button></div>
+              <div className="news-list" aria-live="off">{news.length?news.map(n=><div className="news-item" key={n.id}><span className={`news-symbol news-${n.category}`}>●</span><div><span className="news-tag">{categoryLabel[n.category]} · DIA {n.day}</span><p>{n.text}</p></div></div>):<div className="empty-news">Nenhum evento registrado. Inicie a simulação para acompanhar os boletins.</div>}</div>
+            </div>
+          </div>
+          <WorldIntelligence game={game} selected={selected} onSelect={selectCountry}/>
+        </main>
+
+        <aside className="sidebar right-sidebar">
+          <div className="panel-heading"><span className="heading-square"/> INTELIGÊNCIA REGIONAL <span className="panel-number">03</span></div>
+          <div className="country-panel">
+            <div className="country-header"><div><span className="small-label">TERRITÓRIO SELECIONADO</span><h2><span className="big-flag">{country.flag}</span> {country.name}</h2><span className="country-iso">CÓDIGO {country.id} <b>·</b> PERFIL ESTRATÉGICO</span></div><span className="target-icon">⌖</span></div>
+            <div className="regional-stat"><span>POPULAÇÃO SIMULADA</span><strong>{num.format(country.population)}</strong></div>
+            <div className="regional-stat affected"><span>POPULAÇÃO IMPACTADA</span><strong>{num.format(countryState.affected)} <small>({percent(countryPct)})</small></strong></div>
+            <div className="regional-stat"><span>NOVOS IMPACTOS / DIA</span><strong>{num.format(countryState.newlyAffected)}</strong></div>
+            <div className="country-attrs">
+              <div className="country-attr"><div><span>CONECTIVIDADE</span><b>{country.connectivity}/100</b></div><StatBar value={country.connectivity} color="blue"/></div>
+              <div className="country-attr"><div><span>CIÊNCIA</span><b>{country.science}/100</b></div><StatBar value={country.science}/></div>
+              <div className="country-attr"><div><span>ECONOMIA</span><b>{country.economy}/100</b></div><StatBar value={country.economy} color="orange"/></div>
+            </div>
+            <div className="country-policy"><span className="small-label">POSIÇÃO DO GOVERNO</span><div className={`policy-status policy-${countryState.policy}`}><span>◈</span>{policyLabel[countryState.policy]}</div></div>
+            <div className="country-research"><div><span className="small-label">PESQUISA LOCAL</span><strong>{percent(countryState.research)}</strong></div><StatBar value={countryState.research}/></div>
+            <GovernmentDetail game={game} id={selected}/>
+            <div className="regional-footer"><span className="led-dot"/>{countryState.affected>0?'TERRITÓRIO EM OBSERVAÇÃO':'SEM SINAIS LOCAIS'}</div>
+          </div>
+          <div className="model-note"><div className="model-title">MODELO DE MUNDO</div><p>Os 18 territórios são conectados por uma malha abstrata. Clique no mapa para inspecionar cada país.</p><div className="model-stat">18 <span>NAÇÕES</span> <span className="slash">/</span> 01 <span>CENÁRIO</span></div></div>
+        </aside>
       </div>
-      <div className="content-grid"><div className="primary-column"><WorldMap state={game} selected={selected} onSelect={selectCountry} /><EventsLog game={game} /></div><GameSidebar game={game} selected={selected} speed={speed} onStart={() => setGame((previous) => startGame(previous))} onToggle={toggleGame} onReset={resetGame} onSpeed={setSpeed} onName={(name) => setGame((previous) => previous.status === 'setup' ? { ...previous, agentName: name } : previous)} onTrait={updateTrait} onSelectCountry={selectCountry} /></div>
-      <footer className="site-footer"><div><span className="footer-hex">⬡</span> PROJECT ZERO <span>—</span> PROTÓTIPO DE JOGO FICCIONAL</div><p>* Indicadores e mecânicas de países são parâmetros inventados para gameplay, não dados ou previsões do mundo real.</p><span>© 2026 · ALPHA BUILD</span></footer>
-    </main>
+      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.3.0 — INTELIGÊNCIA MUNDIAL</span></footer>
+    </div>
+    {labOpen&&<Laboratory game={game} onClose={()=>setLabOpen(false)} onName={name=>setGame(g=>setAgentName(g,name))} onAttribute={(id:AttributeId,delta:-1|1)=>setGame(g=>adjustAttribute(g,id,delta))} onPurchase={(id:UpgradeId)=>setGame(g=>buyUpgrade(g,id))}/>}
   </div>;
 }
