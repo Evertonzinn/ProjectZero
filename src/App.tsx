@@ -4,6 +4,7 @@ import { WorldMap } from './components/WorldMap';
 import { TrendChart } from './components/TrendChart';
 import { Laboratory } from './components/Laboratory';
 import { GovernmentDetail, WorldIntelligence } from './components/WorldIntelligence';
+import { WorldEvents } from './components/WorldEvents';
 import type { AttributeId, UpgradeId } from './engine/laboratory';
 import { COUNTRIES, COUNTRY_BY_ID } from './data/countries';
 import { adjustAttribute, advanceDay, buyUpgrade, changeOrigin, createGame, getWorldStats, restoreGame, setAgentName, startGame } from './engine/simulation';
@@ -14,7 +15,7 @@ const num=new Intl.NumberFormat('pt-BR');
 const decimal=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2});
 const percent=(v:number)=>`${decimal.format(v)}%`;
 const policyLabel:Record<Policy,string>={normal:'Monitoramento',atencao:'Alerta preventivo',restricoes:'Restrições',emergencia:'Emergência'};
-const categoryLabel={alerta:'ALERTA',pesquisa:'PESQUISA',governo:'GOVERNO',mundo:'GLOBAL'};
+const categoryLabel={alerta:'ALERTA',pesquisa:'PESQUISA',governo:'GOVERNO',mundo:'GLOBAL',evento:'EVENTO'};
 const nowSeed=()=>Math.floor(Date.now()%2_000_000_000);
 
 function StatBar({value,color='green'}:{value:number;color?:'green'|'orange'|'blue'}) {
@@ -40,7 +41,7 @@ export default function App() {
   const [speed,setSpeed]=useState<1|5|20>(1);
   const [notice,setNotice]=useState('');
   const [labOpen,setLabOpen]=useState(false);
-  const [newsTab,setNewsTab]=useState<'all'|'alerta'|'pesquisa'>('all');
+  const [newsTab,setNewsTab]=useState<'all'|'alerta'|'pesquisa'|'evento'>('all');
   const stats=useMemo(()=>getWorldStats(game),[game]);
   const country=COUNTRY_BY_ID[selected];
   const countryState=game.countries[selected];
@@ -94,7 +95,7 @@ export default function App() {
   return <div className="app">
     <header className="topbar">
       <div className="brand"><div className="brand-mark"><Icon name="globe"/></div><div className="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div>
-      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.3.0</span></span></div>
+      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.4.0</span></span></div>
       <div className="topright"><span className="server-dot"/><span>SIMULAÇÃO LOCAL</span><span className="top-date">SEED #{game.seed}</span></div>
     </header>
 
@@ -151,11 +152,12 @@ export default function App() {
             <TrendChart history={game.history}/>
             <div className="news-shell">
               <div className="news-header"><span>BOLETIM GLOBAL</span><span className="news-total">{game.news.length} EVENTOS</span></div>
-              <div className="news-tabs" role="group" aria-label="Filtrar notícias"><button type="button" className={newsTab==='all'?'active':''} onClick={()=>setNewsTab('all')}>TODOS</button><button type="button" className={newsTab==='alerta'?'active':''} onClick={()=>setNewsTab('alerta')}>ALERTAS</button><button type="button" className={newsTab==='pesquisa'?'active':''} onClick={()=>setNewsTab('pesquisa')}>CIÊNCIA</button></div>
+              <div className="news-tabs" role="group" aria-label="Filtrar notícias"><button type="button" className={newsTab==='all'?'active':''} onClick={()=>setNewsTab('all')}>TODOS</button><button type="button" className={newsTab==='alerta'?'active':''} onClick={()=>setNewsTab('alerta')}>ALERTAS</button><button type="button" className={newsTab==='pesquisa'?'active':''} onClick={()=>setNewsTab('pesquisa')}>CIÊNCIA</button><button type="button" className={newsTab==='evento'?'active':''} onClick={()=>setNewsTab('evento')}>EVENTOS</button></div>
               <div className="news-list" aria-live="off">{news.length?news.map(n=><div className="news-item" key={n.id}><span className={`news-symbol news-${n.category}`}>●</span><div><span className="news-tag">{categoryLabel[n.category]} · DIA {n.day}</span><p>{n.text}</p></div></div>):<div className="empty-news">Nenhum evento registrado. Inicie a simulação para acompanhar os boletins.</div>}</div>
             </div>
           </div>
           <WorldIntelligence game={game} selected={selected} onSelect={selectCountry}/>
+          <WorldEvents game={game} selected={selected} onSelect={selectCountry}/>
         </main>
 
         <aside className="sidebar right-sidebar">
@@ -178,7 +180,7 @@ export default function App() {
           <div className="model-note"><div className="model-title">MODELO DE MUNDO</div><p>Os 18 territórios são conectados por uma malha abstrata. Clique no mapa para inspecionar cada país.</p><div className="model-stat">18 <span>NAÇÕES</span> <span className="slash">/</span> 01 <span>CENÁRIO</span></div></div>
         </aside>
       </div>
-      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.3.0 — INTELIGÊNCIA MUNDIAL</span></footer>
+      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.4.0 — EVENTOS GLOBAIS</span></footer>
     </div>
     {labOpen&&<Laboratory game={game} onClose={()=>setLabOpen(false)} onName={name=>setGame(g=>setAgentName(g,name))} onAttribute={(id:AttributeId,delta:-1|1)=>setGame(g=>adjustAttribute(g,id,delta))} onPurchase={(id:UpgradeId)=>setGame(g=>buyUpgrade(g,id))}/>}
   </div>;
