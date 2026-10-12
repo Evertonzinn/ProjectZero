@@ -8,16 +8,18 @@ countries=(root/'.engine-build/data/countries.js').read_text()
 lab=(root/'.engine-build/engine/laboratory.js').read_text().replace('export ','')
 intel=(root/'.engine-build/engine/intelligence.js').read_text().replace('export ','')
 events=(root/'.engine-build/engine/events.js').read_text().replace('export ','')
+outcome=(root/'.engine-build/engine/outcome.js').read_text().replace('export ','')
+outcome=re.sub(r'^import .*?;\n','',outcome,flags=re.M)
 engine=re.sub(r'^import .*?;\n','',engine,flags=re.M)
 engine=engine.replace('export ','')
 countries=countries.replace('export ','')
 world=(root/'src/data/world.json').read_text()
 html=r'''<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d16"><title>Project Zero — Eventos Globais (prévia offline)</title>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d16"><title>Project Zero — Desfechos e Repartidas (prévia offline)</title>
 <style>%%CSS%%
 .preview-hint{padding:10px 16px;margin-bottom:15px;border:1px solid #395044;color:#d7eaaa;background:#13201b;font-size:11px;line-height:1.5}.preview-hint b{color:#dfff95}.map-overlay{position:absolute;left:16px;bottom:16px;width:290px;max-width:70%;pointer-events:none;border:1px solid #485c45;background:#12202be8;padding:14px;display:grid;gap:6px}.map-overlay>small{font-size:10px;font-weight:750;color:#bfe77e;letter-spacing:1px}.map-overlay>strong{font-size:15px;color:#ecf6eb}.map-overlay>span{font-size:10px;color:#9db3b6}.map-viewport{height:clamp(350px,38vw,570px)}.preview-status{font-size:10px;color:#96adac}.preview-status strong{color:#c8eca3}.country-playable{cursor:pointer}.map-svg-tooltip{position:absolute;top:16px;left:16px;border:1px solid #3b5647;color:#e2f5d7;background:#182b32dd;padding:8px 12px;font-size:12px;font-weight:700;display:none}.radar-btn{height:35px;background:#132332;color:#badab4;border:1px solid #365040;padding:0 12px;font-size:10px;font-weight:750}.radar-btn:hover{background:#284139}.country-metrics{display:grid;gap:12px}.region-box{display:flex;flex-direction:column;gap:6px;border-bottom:1px solid #263845;padding-bottom:12px}.region-box>span{font-size:9px;color:#829aa9;letter-spacing:1px;font-weight:720}.region-box>strong{font-size:21px;color:#ebf5ef}.region-box>strong.hot{color:#f5a487}.attr{margin:10px 0}.attr header{display:flex;justify-content:space-between;color:#a8bdc2;font-size:10px;font-weight:720}.bar-bg{margin-top:7px;height:5px;background:#263946}.bar-progress{height:100%;background:#bce77a}.nation-title{font-size:21px;color:#f0f8f3;margin:7px 0 17px}.nation-title span{font-size:25px}.empty-news{min-height:60px}.chart-container{min-height:160px}.trend-svg{height:145px}.playback-title{display:flex}.news-list{max-height:185px}.quick-panel>button{font-size:12px}.status-summary{margin-bottom:10px;display:flex;justify-content:space-between;color:#97adb4;font-size:10px}.status-summary b{color:#b9e984}.scenario-panel .field-wrap{margin-bottom:13px}.country-attrs{display:block}.right-sidebar .panel-heading{padding:0 14px}@media(max-width:1080px){.right-sidebar .country-panel{display:block}.right-sidebar .country-attrs{display:block}}@media(max-width:730px){.page-body{padding-top:12px}.preview-hint{font-size:10px}.map-viewport{height:215px}.map-overlay{max-width:55%;padding:7px;bottom:7px;left:7px}.map-overlay>strong{font-size:11px}.map-overlay>span{display:none}.playback-title{display:flex}}
 </style></head>
-<body><div class="app"><header class="topbar"><div class="brand"><div class="brand-mark">◎</div><div class="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div><div class="topcenter"><span class="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span class="header-separator"></span><span class="build-label">ALPHA <span>0.4.0</span></span></div><div class="topright"><span class="server-dot"></span>EXECUÇÃO LOCAL</div></header>
+<body><div class="app"><header class="topbar"><div class="brand"><div class="brand-mark">◎</div><div class="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div><div class="topcenter"><span class="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span class="header-separator"></span><span class="build-label">ALPHA <span>0.5.0</span></span></div><div class="topright"><span class="server-dot"></span>EXECUÇÃO LOCAL</div></header>
 <div class="page-body"><div class="preview-hint"><b>PRÉVIA INTERATIVA OFFLINE</b> — Clique em um país, escolha a origem e pressione INICIAR. Este arquivo funciona sem internet, sem servidor e sem npm. Governos decidem de forma autônoma; acompanhe as crises, a corrida científica e os acontecimentos com causas e efeitos persistentes. O projeto React/TypeScript está no ZIP.</div>
 <div class="eyebrow-row"><span>PAINEL DE OPERAÇÕES <b>/</b> MAPA GLOBAL</span><span class="scenario-id">CENÁRIO <b>ZERO / 001</b></span></div>
 <section class="headline"><div><h1>O mundo é seu tabuleiro<span class="headline-dot">.</span></h1><p>Dezoito nações, reações globais e consequências em cadeia.</p></div><div class="day-highlight"><span>DIA</span><strong id="headingDay">000</strong><div class="status-meta" id="headingStatus">AGUARDANDO</div></div></section>
@@ -36,7 +38,7 @@ html=r'''<!doctype html>
 <div id="eventsList" class="events-timeline"></div><footer class="events-footer">Impactos permanentes ficam no país. Modificadores temporários expiram automaticamente.</footer>
 </section></main>
 <aside class="sidebar right-sidebar"><div class="panel-heading"><span class="heading-square"></span> INTELIGÊNCIA REGIONAL <span class="panel-number">03</span></div><div class="country-panel"><div class="small-label">TERRITÓRIO SELECIONADO</div><h2 class="nation-title" id="nationTitle">—</h2><div id="nationDetail"></div></div><div class="model-note"><div class="model-title">MODELO DE MUNDO</div><p>Os 18 países estão ligados por uma rede ficcional. Selecione um para ver seu perfil e sua resposta.</p><div class="model-stat">18 <span>NAÇÕES</span><span class="slash">/</span> 01 <span>CENÁRIO</span></div></div></aside></div>
-<footer class="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO FICTÍCIA · SEM VALOR PREDITIVO</span><span>V0.4.0 — EVENTOS GLOBAIS</span></footer></div></div>
+<footer class="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO FICTÍCIA · SEM VALOR PREDITIVO</span><span>V0.5.0 — RESULTADOS E REPARTIDAS</span></footer></div></div>
 
 <div id="labBackdrop" class="lab-backdrop" style="display:none" aria-hidden="true">
 <section class="lab-modal" role="dialog" aria-modal="true" aria-labelledby="labTitle">
@@ -45,8 +47,8 @@ html=r'''<!doctype html>
 <label class="lab-name-label" for="labAgentName">IDENTIFICADOR DO PROTOCOLO</label><input id="labAgentName" class="lab-name" maxlength="28" placeholder="Nome do protocolo">
 <div class="lab-budget"><div><span>ORÇAMENTO INICIAL</span><strong id="labFree">2<small> / 8 livres</small></strong></div><div class="lab-budget-meter" id="labBudgetMeter"></div></div>
 <div class="lab-attributes" id="labAttributes"></div><div class="lab-feedback"><span>RESULTADO DOS MODIFICADORES</span><div><span>Expansão</span><b id="labGrowth">—</b></div><div><span>Conexões</span><b id="labNetwork">—</b></div><div><span>Limiar de reação</span><b id="labSignal">—</b></div><div><span>Pesquisa mundial</span><b id="labScience">—</b></div><small>Efeitos passam a valer no próximo dia de simulação.</small></div></div>
-<div class="lab-evolutions"><div class="lab-section-heading"><div><span>02 / EVOLUÇÃO</span><h3>Árvore de melhorias</h3></div><div class="lab-points"><span>PONTOS DISPONÍVEIS</span><strong id="labPoints">00</strong></div></div>
-<div class="lab-callout"><span>◈</span><p>Ganhe <b>2 pontos a cada 10 dias</b>. Melhorias custam pontos, exigem níveis mínimos e algumas bloqueiam suas alternativas.</p></div><div class="lab-upgrades" id="labUpgrades"></div></div></div>
+<div class="lab-evolutions"><div class="lab-section-heading"><div><span>02 / EVOLUÇÃO</span><h3>Árvore de melhorias</h3></div><div class="lab-points"><span id="labPointsLabel">PONTOS DISPONÍVEIS</span><strong id="labPoints">00</strong></div></div>
+<div class="lab-callout"><span>◈</span><p id="labNotice">Ganhe 2 pontos a cada 10 dias.</p></div><div class="lab-upgrades" id="labUpgrades"></div></div></div>
 <footer class="lab-footer"><span>SIMULAÇÃO FICTÍCIA · ATRIBUTOS ABSTRATOS DE GAMEPLAY</span><button type="button" class="lab-done" id="labDone">VOLTAR AO MAPA →</button></footer></section></div>
 <script>
 'use strict';
@@ -56,6 +58,7 @@ const worldData=%%WORLD%%;
 %%INTEL_MODULE%%
 %%EVENTS_MODULE%%
 %%ENGINE%%
+%%OUTCOME_MODULE%%
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const fmt=n=>new Intl.NumberFormat('pt-BR').format(n);
@@ -63,7 +66,7 @@ const pct=n=>new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(n)+
 const point=pos=>[(pos[0]+180)/360*1600,(85-pos[1])/145*720];
 const ns='http://www.w3.org/2000/svg';
 let game=createGame('BRA',Math.floor(Date.now()%2000000000));
-let selected='BRA', playing=false, speed=1, timer=null, tab='all', eventFilter='all', zoom=1, center=[800,360], pointer=null, dragging=false;
+let selected='BRA', playing=false, speed=1, timer=null, tab='all', eventFilter='all', zoom=1, center=[800,360], pointer=null, dragging=false, previousRun=null, seenOutcome=null;
 const paths=new Map(),nodes=new Map(),links=[];
 for(const c of COUNTRIES){const option=document.createElement('option');option.value=c.id;option.textContent=c.name;$('originSelect').appendChild(option);}
 function svgEl(tag,props){const el=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(props||{}))el.setAttribute(k,v);return el;}
@@ -95,10 +98,11 @@ function render(){
  const stats=getWorldStats(game),country=COUNTRY_BY_ID[selected],s=game.countries[selected],started=game.phase!=='setup',ended=!['setup','running'].includes(game.phase);
  $('kpiPopulation').textContent=pct(stats.population/1e9).replace('%',' bi');$('kpiAffected').textContent=fmt(stats.affected);$('kpiPct').textContent=pct(stats.affectedPct)+' DA POPULAÇÃO';$('kpiCountries').textContent=String(stats.activeCountries).padStart(2,'0')+' / 18';$('kpiScience').textContent=pct(stats.research);$('scienceBar').style.width=stats.research+'%';
  $('headingDay').textContent=String(game.day).padStart(3,'0');$('timeLabel').textContent='DIA '+String(game.day).padStart(3,'0');$('headingStatus').textContent=ended?'ENCERRADO':playing?'EM EXECUÇÃO':started?'PAUSADO':'AGUARDANDO';
- $('labLaunchDetail').textContent=(game.agent.name||'SEM NOME')+' · '+game.agent.purchased.length+' MELHORIAS';$('labAlert').style.display=game.agent.points>0?'block':'none';$('labAlert').textContent='◆ '+game.agent.points+' ponto(s) disponível(is)';
+ $('labLaunchDetail').textContent=(game.agent.name||'SEM NOME')+' · '+game.agent.purchased.length+' MELHORIAS';$('labAlert').style.display=game.agent.points>0?'block':'none';$('labAlert').textContent='◆ '+game.agent.points+(ended?' pontos não utilizados · partida encerrada':' pontos disponíveis para evolução');
  $('seedLabel').textContent='#'+game.seed;$('originSelect').value=game.origin;$('originSelect').disabled=started;$('selectFlag').textContent=COUNTRY_BY_ID[game.origin].flag;
  $('startBtn').style.display=started?'none':'flex';$('playBtn').disabled=!started||ended;$('stepBtn').disabled=!started||ended;$('playBtn').textContent=playing?'Ⅱ':'▶';$('mapOverlay').style.display=started?'none':'grid';
- $('gameEnd').style.display=ended?'grid':'none';$('gameEnd').innerHTML=ended?`<strong>${game.phase==='contained'?'CONTENÇÃO CIENTÍFICA':'CRISE GLOBAL'}</strong><span>Encerrado no dia ${game.day}</span>`:'';
+ $('gameEnd').style.display=ended?'grid':'none';$('gameEnd').innerHTML=ended?`<strong>${game.phase==='contained'?'CONTENÇÃO CIENTÍFICA':'LIMITE CRÍTICO ATINGIDO'}</strong><span>Encerrado no dia ${game.day}</span><button class="outline-btn" type="button" data-outcome-action="open">VER RELATÓRIO FINAL ↗</button>`:'';
+ if(ended&&seenOutcome!==game.seed+':'+game.day){seenOutcome=game.seed+':'+game.day;showOutcome(true);}
  $('nationTitle').innerHTML=`<span>${country.flag}</span> ${country.name}`;
  const attrs=[['CONECTIVIDADE',country.connectivity,'#75cbda'],['CIÊNCIA',country.science,'#b8eb73'],['ECONOMIA',country.economy,'#e9b078']];
  $('nationDetail').innerHTML=`<div class="country-metrics"><div class="region-box"><span>POPULAÇÃO SIMULADA</span><strong>${fmt(country.population)}</strong></div><div class="region-box"><span>IMPACTADOS (${pct(s.affected/country.population*100)})</span><strong class="hot">${fmt(s.affected)}</strong></div><div class="region-box"><span>NOVOS IMPACTOS / DIA</span><strong>${fmt(s.newlyAffected)}</strong></div></div><div class="country-attrs">${attrs.map(([label,value,color])=>`<div class="attr"><header><span>${label}</span><b>${value}/100</b></header><div class="bar-bg"><div class="bar-progress" style="width:${value}%;background:${color}"></div></div></div>`).join('')}</div><div class="country-policy"><span class="small-label">POSIÇÃO DO GOVERNO</span><div class="policy-status policy-${s.policy}">◈ &nbsp; ${policies[s.policy]}</div></div><div class="country-research"><div><span class="small-label">PESQUISA LOCAL</span><strong>${pct(s.research)}</strong></div><div class="bar-track"><div class="bar-fill" style="width:${s.research}%"></div></div></div>
@@ -135,9 +139,9 @@ function restartTimer(){if(timer)clearInterval(timer);timer=null;if(!playing||ga
 $('startBtn').onclick=()=>{game=startGame(game);playing=true;restartTimer();message('Simulação iniciada.');render();};
 $('playBtn').onclick=()=>{if(game.phase!=='running')return;playing=!playing;restartTimer();render();};
 $('stepBtn').onclick=()=>{if(game.phase!=='running')return;playing=false;restartTimer();game=advanceDay(game);render();};
-$('resetBtn').onclick=()=>{if(game.phase!=='setup'&&!confirm('Descartar o progresso não salvo?'))return;playing=false;restartTimer();game=createGame(selected,Math.floor(Date.now()%2000000000));message('Novo cenário pronto.');render();};
+$('resetBtn').onclick=()=>{if(game.phase!=='setup'&&!confirm('Descartar o progresso não salvo?'))return;playing=false;restartTimer();previousRun=null;seenOutcome=null;showOutcome(false);game=createGame(selected,Math.floor(Date.now()%2000000000));message('Novo cenário pronto.');render();};
 $('saveBtn').onclick=()=>{try{localStorage.setItem('project-zero-save-v1',JSON.stringify(game));message('Partida salva no navegador.');}catch{message('Falha ao salvar neste navegador.');}};
-$('loadBtn').onclick=()=>{try{const stored=localStorage.getItem('project-zero-save-v1');if(!stored){message('Nenhuma partida salva.');return;}const parsed=JSON.parse(stored);const restored=restoreGame(parsed);if(!restored){message('Save incompatível.');return;}playing=false;restartTimer();game=restored;selected=game.origin;message('Partida restaurada.');render();}catch{message('Não foi possível carregar.');}};
+$('loadBtn').onclick=()=>{try{const stored=localStorage.getItem('project-zero-save-v1');if(!stored){message('Nenhuma partida salva.');return;}const parsed=JSON.parse(stored);const restored=restoreGame(parsed);if(!restored){message('Save incompatível.');return;}playing=false;restartTimer();previousRun=null;seenOutcome=null;showOutcome(false);game=restored;selected=game.origin;message('Partida restaurada.');render();}catch{message('Não foi possível carregar.');}};
 $('originSelect').onchange=e=>selectCountry(e.target.value);
 $('intelRanking').onclick=e=>{const btn=e.target.closest('[data-country]');if(btn)selectCountry(btn.dataset.country);};
 $('speedGroup').onclick=e=>{const btn=e.target.closest('[data-speed]');if(!btn)return;speed=Number(btn.dataset.speed);for(const b of $('speedGroup').querySelectorAll('button'))b.classList.toggle('active',b===btn);restartTimer();};
@@ -152,6 +156,8 @@ function renderLab(){
   const setup=game.phase==='setup',a=game.agent.attributes,free=freeAttributePoints(a),mod=getLabModifiers(game);
   $('labMode').textContent=setup?'EDITÁVEL':'BLOQUEADO';$('labAgentName').value=game.agent.name;$('labAgentName').disabled=!setup;
   $('labPoints').textContent=String(game.agent.points).padStart(2,'0');$('labFree').innerHTML=free+'<small> / 8 livres</small>';
+ $('labPointsLabel').textContent=game.phase==='running'?'PONTOS DISPONÍVEIS':setup?'PONTOS FUTUROS':'SALDO FINAL (BLOQUEADO)';
+ $('labNotice').textContent=setup?'Distribua os 8 pontos iniciais antes de começar.':game.phase==='running'?'Ganhe 2 pontos a cada 10 dias; gaste antes da partida terminar.':'A partida terminou. Os pontos restantes não podem mais ser gastos. Repita a mesma seed para tentar outra estratégia.';
   $('labBudgetMeter').innerHTML=Array.from({length:ATTRIBUTE_BUDGET},(_,i)=>'<i class="'+(i<ATTRIBUTE_BUDGET-free?'filled':'')+'"></i>').join('');
   $('labGrowth').textContent=ratio(mod.growthFactor);$('labNetwork').textContent=ratio(mod.networkFactor);$('labSignal').textContent=ratio(mod.signalFactor);$('labScience').textContent=ratio(mod.scienceFactor);
   $('labAttributes').innerHTML=ATTRIBUTE_IDS.map(id=>{const d=ATTRIBUTES[id],n=a[id];return `<div class="lab-attribute"><div class="lab-attribute-head"><div><span class="lab-dot ${d.color}"></span><strong>${esc(d.title)}</strong></div><span>NÍVEL ${n}/${ATTRIBUTE_MAX}</span></div><p>${esc(d.description)}</p><div class="lab-attribute-controls"><button type="button" data-attr="${id}" data-delta="-1" aria-label="Diminuir ${esc(d.title)}" ${!setup||n===0?'disabled':''}>−</button><div class="lab-level-meter">${Array.from({length:ATTRIBUTE_MAX},(_,i)=>'<i class="'+(i<n?d.color:'')+'"></i>').join('')}</div><button type="button" data-attr="${id}" data-delta="1" aria-label="Aumentar ${esc(d.title)}" ${!setup||n===ATTRIBUTE_MAX||!free?'disabled':''}>+</button></div><small>${esc(d.impact)}</small></div>`;}).join('');
@@ -165,8 +171,40 @@ $('labAgentName').oninput=e=>{game=setAgentName(game,e.target.value);};
 $('labAttributes').onclick=e=>{const btn=e.target.closest('[data-attr]');if(!btn||btn.disabled)return;game=adjustAttribute(game,btn.dataset.attr,Number(btn.dataset.delta));renderLab();};
 $('labUpgrades').onclick=e=>{const btn=e.target.closest('[data-upgrade]');if(!btn||btn.disabled)return;game=buyUpgrade(game,btn.dataset.upgrade);renderLab();render();};
 
+const resultBackdrop=document.createElement('div');
+resultBackdrop.id='resultBackdrop';resultBackdrop.className='result-backdrop';resultBackdrop.style.display='none';document.body.appendChild(resultBackdrop);
+function showOutcome(visible){
+ if(!visible){resultBackdrop.style.display='none';resultBackdrop.innerHTML='';return;}
+ const current=summarizeRun(game);if(!current)return;
+ const milestones=buildMilestones(game),victory=current.outcome==='overwhelmed',same=comparableRuns(previousRun,current);
+ resultBackdrop.innerHTML=`<section class="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title">
+ <header class="result-topline"><span>PROJECT ZERO / RELATÓRIO DE MISSÃO <b>V0.5</b></span><button class="result-close" type="button" data-outcome-action="close" aria-label="Fechar resultado">✕</button></header>
+ <div class="result-hero ${victory?'result-success':'result-containment'}"><span class="result-eyebrow">CENÁRIO ENCERRADO · DIA ${current.day} · SEED #${current.seed}</span><h2 id="result-title">${victory?'Limite crítico atingido.':'Contenção científica concluída.'}</h2><p>${victory?'O cenário ultrapassou 70% de impacto antes da conclusão da pesquisa científica.':'A pesquisa global alcançou 100% antes que o cenário atingisse o limite crítico.'}</p><span class="result-origin">${COUNTRY_BY_ID[current.origin].flag} Origem: ${esc(COUNTRY_BY_ID[current.origin].name)}</span></div>
+ <div class="result-scroll"><div class="result-kpis"><div><span>DIAS DE PARTIDA</span><strong>${current.day}</strong></div><div><span>POPULAÇÃO IMPACTADA</span><strong>${pct(current.affectedPct)}</strong></div><div><span>PESQUISA GLOBAL</span><strong>${pct(current.research)}</strong></div><div><span>EVOLUÇÕES ADQUIRIDAS</span><strong>${current.upgrades}</strong></div></div>
+ <div class="result-section-title"><h3>Marcos da partida</h3><span>${milestones.length} registros calculados</span></div><ol class="result-milestones">${milestones.map(m=>`<li class="result-milestone-${m.category}"><span>DIA ${String(m.day).padStart(3,'0')}</span><b>${esc(m.label)}</b></li>`).join('')}</ol>
+ <div class="result-compare"><div class="result-section-title"><h3>Comparar estratégias</h3><span>${same?'MESMA SEED E CONFIGURAÇÃO':'AGUARDANDO REPARTIDA COMPARÁVEL'}</span></div>${same&&previousRun?`<div class="result-comparison-grid"><div><span>DIAS ATÉ O DESFECHO</span><b>${previousRun.day} → ${current.day}</b><small>${current.day-previousRun.day>=0?'+':''}${current.day-previousRun.day} dias</small></div><div><span>POPULAÇÃO IMPACTADA</span><b>${pct(previousRun.affectedPct)} → ${pct(current.affectedPct)}</b><small>${pct(current.affectedPct-previousRun.affectedPct)} de diferença</small></div><div><span>RESULTADO</span><b>${previousRun.outcome===current.outcome?'Mesmo desfecho':'Desfecho diferente'}</b></div></div>`:'<p>Repita a mesma seed, país e atributos iniciais. As escolhas de melhorias poderão mudar o resultado da próxima tentativa.</p>'}</div>
+ <p class="result-disclaimer">Cronologia baseada nos marcos e eventos que permanecem no histórico limitado. Repetir a seed não reproduz automaticamente as decisões anteriores. Simulação inteiramente fictícia.</p></div>
+ <footer class="result-actions"><button type="button" class="result-secondary" data-outcome-action="close">EXPLORAR MAPA</button><button type="button" class="result-secondary" data-outcome-action="new">NOVA SEED</button><button type="button" class="result-primary" data-outcome-action="repeat">↻ REPETIR MESMA SEED</button></footer></section>`;
+ resultBackdrop.style.display='flex';resultBackdrop.querySelector('.result-close').focus();
+}
+resultBackdrop.onclick=e=>{
+ const btn=e.target.closest('[data-outcome-action]');
+ if(!btn){if(e.target===resultBackdrop)showOutcome(false);return;}
+ const action=btn.dataset.outcomeAction;
+ if(action==='close'){showOutcome(false);return;}
+ if(action==='new'){
+  playing=false;restartTimer();previousRun=null;seenOutcome=null;showOutcome(false);game=createGame(game.origin,Math.floor(Date.now()%2000000000));selected=game.origin;message('Nova seed pronta.');render();return;
+ }
+ if(action==='repeat'){
+  const result=summarizeRun(game);if(!result)return;
+  playing=false;restartTimer();previousRun=result;seenOutcome=null;game=repeatSeed(game);selected=game.origin;showOutcome(false);render();toggleLab(true);
+ }
+};
+$('gameEnd').onclick=e=>{if(e.target.closest('[data-outcome-action="open"]'))showOutcome(true);};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&resultBackdrop.style.display==='flex')showOutcome(false);});
+
 initMap();render();
 </script></body></html>'''
-html=html.replace('%%CSS%%',css).replace('%%COUNTRIES%%',countries).replace('%%LAB_MODULE%%',lab).replace('%%INTEL_MODULE%%',intel).replace('%%EVENTS_MODULE%%',events).replace('%%ENGINE%%',engine).replace('%%WORLD%%',world)
+html=html.replace('%%CSS%%',css).replace('%%COUNTRIES%%',countries).replace('%%LAB_MODULE%%',lab).replace('%%INTEL_MODULE%%',intel).replace('%%EVENTS_MODULE%%',events).replace('%%ENGINE%%',engine).replace('%%OUTCOME_MODULE%%',outcome).replace('%%WORLD%%',world)
 out=root/'preview-offline.html';out.write_text(html,encoding='utf-8')
 print(out, out.stat().st_size,'bytes')

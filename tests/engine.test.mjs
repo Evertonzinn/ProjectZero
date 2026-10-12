@@ -268,3 +268,63 @@ test('efeito de crise ativa altera efetivamente a próxima transição de estado
   assert.ok(changed.countries.BRA.government.budget<original.countries.BRA.government.budget);
   assert.ok(changed.countries.BRA.research<=original.countries.BRA.research);
 });
+
+import { summarizeRun, repeatSeed, comparableRuns, buildMilestones } from '../.engine-build/engine/outcome.js';
+
+test('resultado só é calculado após encerramento',()=>{
+  const setup=createGame('BRA',123);
+  assert.equal(summarizeRun(setup),null);
+  let game=startGame(setup);
+  assert.equal(summarizeRun(game),null);
+  for(let i=0;i<350&&game.phase==='running';i++) game=advanceDay(game);
+  const result=summarizeRun(game);
+  assert.ok(result);
+  assert.equal(result.seed,123);
+  assert.equal(result.day,game.day);
+  assert.equal(result.outcome,game.phase);
+  assert.ok(result.affectedPct>=0&&result.affectedPct<=100);
+  assert.ok(result.research>=0&&result.research<=100);
+});
+
+test('repetição preserva seed, país e atributos mas limpa progressão',()=>{
+  let game=createGame('JPN',9983);
+  game=adjustAttribute(game,'propagacao',1);
+  game=startGame(game);
+  for(let i=0;i<32&&game.phase==='running';i++)game=advanceDay(game);
+  game=buyUpgrade(game,'correntes');
+  const repeated=repeatSeed(game);
+  assert.equal(repeated.version,4);
+  assert.equal(repeated.phase,'setup');
+  assert.equal(repeated.seed,9983);
+  assert.equal(repeated.origin,'JPN');
+  assert.deepEqual(repeated.agent.attributes,game.agent.attributes);
+  assert.deepEqual(repeated.agent.purchased,[]);
+  assert.equal(repeated.agent.points,0);
+  assert.equal(repeated.day,0);
+  assert.deepEqual(repeated.globalEvents,[]);
+  assert.ok(isGameState(repeated));
+});
+
+test('comparação só é válida para condições iniciais idênticas',()=>{
+  let game=startGame(createGame('BRA',301));
+  for(let i=0;i<350&&game.phase==='running';i++)game=advanceDay(game);
+  const summary=summarizeRun(game);
+  assert.ok(summary);
+  assert.equal(comparableRuns(null,summary),false);
+  assert.equal(comparableRuns(summary,summary),true);
+  assert.equal(comparableRuns({...summary,seed:99},summary),false);
+  assert.equal(comparableRuns({...summary,origin:'JPN'},summary),false);
+  assert.equal(comparableRuns({...summary,attributes:{...summary.attributes,propagacao:summary.attributes.propagacao+1}},summary),false);
+});
+
+test('linha do tempo só usa marcos registrados e mantém dias em ordem',()=>{
+  const setup=createGame('BRA',23);
+  assert.deepEqual(buildMilestones(setup),[{day:0,label:'Início em Brasil',category:'inicio'}]);
+  let game=startGame(setup);
+  for(let i=0;i<350&&game.phase==='running';i++)game=advanceDay(game);
+  const marks=buildMilestones(game);
+  assert.equal(marks[0].day,0);
+  assert.equal(marks.at(-1).day,game.day);
+  assert.ok(marks.every((m,i)=>i===0||marks[i-1].day<=m.day));
+  assert.ok(marks.every(m=>m.day<=game.day));
+});

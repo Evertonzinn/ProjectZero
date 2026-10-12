@@ -48,8 +48,8 @@ export function Laboratory({game,onClose,onName,onAttribute,onPurchase}:Props) {
           <div className="lab-feedback"><span>RESULTADO DOS MODIFICADORES</span><div><span>Expansão</span><b>{pct(modifiers.growthFactor)}</b></div><div><span>Conexões</span><b>{pct(modifiers.networkFactor)}</b></div><div><span>Limiar de reação</span><b>{pct(modifiers.signalFactor)}</b></div><div><span>Pesquisa mundial</span><b>{pct(modifiers.scienceFactor)}</b></div><small>Comparados aos parâmetros neutros do motor. Efeitos são aplicados a partir do próximo dia.</small></div>
         </div>
         <div className="lab-evolutions">
-          <div className="lab-section-heading"><div><span>02 / EVOLUÇÃO</span><h3>Árvore de melhorias</h3></div><div className="lab-points"><span>PONTOS DISPONÍVEIS</span><strong>{game.agent.points.toString().padStart(2,'0')}</strong></div></div>
-          <div className="lab-callout"><span>◈</span><p>Ganhe <b>2 pontos a cada 10 dias</b>. Melhorias custam pontos, exigem níveis mínimos e algumas escolhas bloqueiam seus caminhos opostos.</p></div>
+          <div className="lab-section-heading"><div><span>02 / EVOLUÇÃO</span><h3>Árvore de melhorias</h3></div><div className="lab-points"><span>{game.phase==='running'?'PONTOS DISPONÍVEIS':game.phase==='setup'?'PONTOS FUTUROS':'SALDO FINAL (BLOQUEADO)'}</span><strong>{game.agent.points.toString().padStart(2,'0')}</strong></div></div>
+          <div className="lab-callout"><span>◈</span><p>{game.phase==='running'?<>Ganhe <b>2 pontos a cada 10 dias</b>. Melhore o protocolo antes do encerramento; algumas escolhas bloqueiam caminhos opostos.</>:game.phase==='setup'?<>Distribua os <b>8 pontos iniciais</b> à esquerda. Após iniciar, receba 2 pontos de evolução a cada 10 dias.</>:<>A partida foi encerrada. <b>Os pontos restantes são históricos</b> e não podem ser gastos. Use Repetir mesma seed para tentar outra estratégia.</>}</p></div>
           <div className="lab-upgrades">{UPGRADES.map((up,i)=>{
             const available=availableUpgrade(game,up.id),owned=game.agent.purchased.includes(up.id);
             return <article className={`lab-upgrade ${owned?'owned':''}`} key={up.id}>

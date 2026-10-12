@@ -1,6 +1,6 @@
-# PROJECT ZERO — Eventos Globais (Alpha 0.4.0)
+# PROJECT ZERO — Desfechos e Repartidas (Alpha 0.5.0)
 
-Protótipo de estratégia global com mapa 2D, laboratório, governos autônomos e eventos causais, **inteiramente fictício**. O laboratório modifica coeficientes abstratos do motor; nada aqui representa ou orienta fenômenos epidemiológicos reais.
+Protótipo de estratégia global com mapa 2D, laboratório, governos autônomos, eventos causais e desfechos comparáveis, **inteiramente fictício**. O laboratório modifica coeficientes abstratos do motor; nada aqui representa ou orienta fenômenos epidemiológicos reais.
 
 ## Experimentar sem instalar nada
 
@@ -16,6 +16,7 @@ Abra `preview-offline.html` no navegador (Chrome, Edge ou Firefox). O arquivo in
 6. Acompanhe a **Corrida científica & diplomacia** abaixo do gráfico global: clique em um dos cinco líderes para visualizar suas decisões e recursos no painel regional.
 7. Acompanhe **Crônicas do Mundo**: filtre eventos por todos, ativos ou país selecionado. Cada ocorrência mostra gatilho, consequência, duração e localização. O mapa destaca países com eventos ativos em anéis azuis.
 8. Pause, avance dias, inspecione países, salve/restaure ou reinicie o cenário.
+9. Quando a pesquisa mundial alcançar **100%** ou a população impactada chegar a **70%**, o jogo termina e exibe o relatório final. Compare métricas, examine marcos registrados e repita a mesma seed (mesma origem e atributos iniciais) para tentar outra estratégia. Pontos restantes deixam de ser utilizáveis ao encerrar.
 
 A simulação pausa automaticamente quando o laboratório é aberto e continua apenas quando o jogador retoma os controles de tempo.
 
@@ -24,7 +25,7 @@ A simulação pausa automaticamente quando o laboratório é aberto e continua a
 Requisitos: Node.js 20.19+ ou 22.12+ e npm.
 
 ```bash
-cd project-zero-map
+cd ProjectZero
 npm install
 npm run dev
 ```
@@ -40,6 +41,18 @@ npm run preview
 ```
 
 `npm run test:engine` valida o motor determinístico isoladamente. `npm run build` exige dependências instaladas. Para hospedagem estática, publique o conteúdo de `dist/`.
+
+## Alterações 0.5.0 — Desfechos e Repartidas
+
+- `src/engine/outcome.ts`: sumário do desfecho com métricas derivadas do estado real, marcos de expansão e pesquisa registrados, e repetição controlada de seed.
+- `src/components/GameOutcome.tsx`: modal de resultado com país de origem, tempo, percentual impactado, avanço científico, melhorias, cronologia e comparação entre tentativas compatíveis.
+- `src/App.tsx`: relatório ao fim da partida, acesso posterior pelo painel lateral, opção de gerar nova seed ou repetir a mesma com os atributos iniciais preservados.
+- `src/components/Laboratory.tsx`: diferencia os pontos utilizáveis durante a partida do saldo histórico bloqueado após o encerramento.
+- `scripts/build_preview.py` / `preview-offline.html`: demonstração independente de dependências com o mesmo motor de resultados, cronologia e botões de repetir.
+- **Saves**: schema v4 inalterado; compatibilidade com versões anteriores mantida. A comparação entre duas partidas permanece em memória apenas durante a sessão, não é salva nem enviada ao servidor.
+- **Validação**: 25 testes de motor aprovados. Prévia HTML testada no Chromium com encerramento, repetição da seed e comparação, sem erros JS. Sintaxe TSX inspecionada. Build React/Vite completo ainda requer `npm install` em ambiente com acesso ao registro npm.
+
+**Limite conhecido:** repetir a mesma seed não executa um replay automático das decisões passadas; cria um novo jogo equivalente, onde as escolhas podem ser diferentes. A cronologia usa registros retidos (histórico de até 320 ticks e até 120 eventos); não inventa marcos anteriores.
 
 ## Alterações 0.4.0 — Eventos Globais
 

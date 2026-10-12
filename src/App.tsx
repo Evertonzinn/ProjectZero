@@ -5,6 +5,9 @@ import { TrendChart } from './components/TrendChart';
 import { Laboratory } from './components/Laboratory';
 import { GovernmentDetail, WorldIntelligence } from './components/WorldIntelligence';
 import { WorldEvents } from './components/WorldEvents';
+import { GameOutcome } from './components/GameOutcome';
+import { repeatSeed, summarizeRun } from './engine/outcome';
+import type { RunSummary } from './engine/outcome';
 import type { AttributeId, UpgradeId } from './engine/laboratory';
 import { COUNTRIES, COUNTRY_BY_ID } from './data/countries';
 import { adjustAttribute, advanceDay, buyUpgrade, changeOrigin, createGame, getWorldStats, restoreGame, setAgentName, startGame } from './engine/simulation';
@@ -41,6 +44,8 @@ export default function App() {
   const [speed,setSpeed]=useState<1|5|20>(1);
   const [notice,setNotice]=useState('');
   const [labOpen,setLabOpen]=useState(false);
+  const [outcomeOpen,setOutcomeOpen]=useState(false);
+  const [previousRun,setPreviousRun]=useState<RunSummary|null>(null);
   const [newsTab,setNewsTab]=useState<'all'|'alerta'|'pesquisa'|'evento'>('all');
   const stats=useMemo(()=>getWorldStats(game),[game]);
   const country=COUNTRY_BY_ID[selected];
@@ -55,7 +60,7 @@ export default function App() {
     return ()=>window.clearInterval(timer);
   },[playing,speed,game.phase]);
   useEffect(()=>{
-    if(ended)setPlaying(false);
+    if(ended){setPlaying(false);setOutcomeOpen(true);}
   },[ended]);
 
   const selectCountry=(id:string)=>{
@@ -73,8 +78,22 @@ export default function App() {
     if(started && !window.confirm('Reiniciar a simulação? O progresso não salvo será perdido.'))return;
     setPlaying(false);
     setLabOpen(false);
+    setOutcomeOpen(false);
+    setPreviousRun(null);
     setGame(createGame(selected,nowSeed()));
     setNotice('Novo cenário pronto. Selecione a origem e inicie.');
+  };
+  const newAfterOutcome=()=>{
+    setPlaying(false);setOutcomeOpen(false);setLabOpen(false);setPreviousRun(null);
+    setGame(createGame(game.origin,nowSeed()));setSelected(game.origin);
+    setNotice('Nova seed criada. Configure o laboratório e comece.');
+  };
+  const repeat=()=>{
+    const summary=summarizeRun(game);
+    if(!summary)return;
+    setPlaying(false);setOutcomeOpen(false);setPreviousRun(summary);
+    setGame(repeatSeed(game));setSelected(game.origin);setLabOpen(true);
+    setNotice('Mesma seed e atributos iniciais. Reconfigure se desejar e inicie.');
   };
   const save=()=>{
     try { localStorage.setItem(SAVE_KEY,JSON.stringify(game));setNotice('Partida salva neste navegador.'); }
@@ -87,7 +106,7 @@ export default function App() {
       const parsed:unknown=JSON.parse(content);
       const restored=restoreGame(parsed);
       if(!restored){setNotice('Save incompatível ou inválido.');return;}
-      setPlaying(false);setLabOpen(false);setGame(restored);setSelected(restored.origin);setNotice((parsed as {version?:number}).version===1?'Save antigo migrado.':'Partida restaurada.');
+      setPlaying(false);setLabOpen(false);setOutcomeOpen(false);setPreviousRun(null);setGame(restored);setSelected(restored.origin);setNotice((parsed as {version?:number}).version===1?'Save antigo migrado.':'Partida restaurada.');
     }catch{setNotice('Não foi possível carregar o save.');}
   };
   const news=game.news.filter(item=>newsTab==='all'||item.category===newsTab).slice(0,6);
@@ -95,7 +114,7 @@ export default function App() {
   return <div className="app">
     <header className="topbar">
       <div className="brand"><div className="brand-mark"><Icon name="globe"/></div><div className="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div>
-      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.4.0</span></span></div>
+      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.5.0</span></span></div>
       <div className="topright"><span className="server-dot"/><span>SIMULAÇÃO LOCAL</span><span className="top-date">SEED #{game.seed}</span></div>
     </header>
 
@@ -126,9 +145,9 @@ export default function App() {
             </select><span className="field-chevron">⌄</span></label>
             <div className="seed-row"><span>SEED DO CENÁRIO</span><span>#{game.seed}</span></div>
             <button className="lab-launch" onClick={openLab} type="button"><span className="lab-launch-icon">⬡</span><span><strong>LABORATÓRIO ZERO</strong><small>{game.agent.name||'PROTOCOLO SEM NOME'} · {game.agent.purchased.length} MELHORIAS</small></span><span className="lab-launch-arrow">↗</span></button>
-            {game.agent.points>0&&<div className="lab-alert">◆ {game.agent.points} ponto(s) de evolução disponível(is)</div>}
+            {game.agent.points>0&&<div className="lab-alert">◆ {ended?`${game.agent.points} pontos não utilizados · partida encerrada`:`${game.agent.points} pontos disponíveis para evolução`}</div>}
             {!started?<button className="primary-btn" onClick={begin} type="button"><Icon name="play"/> INICIAR SIMULAÇÃO <span>↗</span></button>:<button className="outline-btn full-width" onClick={reset} type="button"><Icon name="reset"/> NOVA PARTIDA</button>}
-            {ended&&<div className="outcome-box"><strong>{game.phase==='contained'?'CONTENÇÃO CIENTÍFICA':'CRISE GLOBAL'}</strong><span>Simulação encerrada no dia {game.day}.</span></div>}
+            {ended&&<div className="outcome-box"><strong>{game.phase==='contained'?'CONTENÇÃO CIENTÍFICA':'LIMITE CRÍTICO ATINGIDO'}</strong><span>Simulação encerrada no dia {game.day}.</span><button type="button" className="outline-btn" onClick={()=>setOutcomeOpen(true)}>VER RELATÓRIO FINAL ↗</button></div>}
           </div>
           <div className="panel-heading secondary"><span className="heading-square"/> CONTROLES RÁPIDOS <span className="panel-number">02</span></div>
           <div className="quick-panel"><button onClick={save} type="button"><Icon name="save"/> Salvar partida <span>⌘</span></button><button onClick={load} type="button"><Icon name="upload"/> Carregar partida <span>↗</span></button><button onClick={reset} type="button"><Icon name="reset"/> Reiniciar cenário <span>↺</span></button></div>
@@ -180,8 +199,9 @@ export default function App() {
           <div className="model-note"><div className="model-title">MODELO DE MUNDO</div><p>Os 18 territórios são conectados por uma malha abstrata. Clique no mapa para inspecionar cada país.</p><div className="model-stat">18 <span>NAÇÕES</span> <span className="slash">/</span> 01 <span>CENÁRIO</span></div></div>
         </aside>
       </div>
-      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.4.0 — EVENTOS GLOBAIS</span></footer>
+      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.5.0 — RESULTADOS E REPARTIDAS</span></footer>
     </div>
+    {outcomeOpen&&ended&&<GameOutcome game={game} previous={previousRun} onClose={()=>setOutcomeOpen(false)} onRepeat={repeat} onNew={newAfterOutcome}/>}
     {labOpen&&<Laboratory game={game} onClose={()=>setLabOpen(false)} onName={name=>setGame(g=>setAgentName(g,name))} onAttribute={(id:AttributeId,delta:-1|1)=>setGame(g=>adjustAttribute(g,id,delta))} onPurchase={(id:UpgradeId)=>setGame(g=>buyUpgrade(g,id))}/>}
   </div>;
 }
