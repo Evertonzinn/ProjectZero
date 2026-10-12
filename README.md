@@ -1,4 +1,4 @@
-# Project Zero — Economia de Evolução (Alpha v0.6.0)
+# Project Zero — Balanceamento Estratégico (Alpha v0.7.0)
 
 Jogo de estratégia global em React, Vite e TypeScript, com mapa 2D, laboratório, governos autônomos, acontecimentos causais, relatório final e repartidas. Toda a simulação é **fictícia**: os indicadores de propagação são mecânicas abstratas de jogo, não modelos epidemiológicos.
 
@@ -7,11 +7,40 @@ Jogo de estratégia global em React, Vite e TypeScript, com mapa 2D, laboratóri
 ```bash
 # Os comandos devem ser executados na pasta do repositório.
 npm run test:engine
+npm run benchmark
 npm run build
 npm run dev
 ```
 
 **Somente execute `npm install` caso as dependências não estejam instaladas ou mudem.** O package.json da v0.6 não inclui novas bibliotecas. O Vite informa a URL; para acesso na rede local, use o IP da máquina e a porta informada.
+
+## v0.7 — Modos de jogo e balanceamento verificável
+
+Antes de iniciar, escolha **Modo de jogo** no painel lateral:
+
+- **Exploração**: expansão favorecida, foco em experimentar decisões (baixo desafio).
+- **Equilibrado** (padrão): disputa ajustada entre estratégia do jogador e resposta científica.
+- **Desafio**: vantagem relativa da resposta científica; exige escolhas de melhoria/tática mais eficientes.
+- **Clássico v0.6**: coeficientes e meta de 100% anteriores, preservados para compatibilidade.
+
+Nos modos Equilibrado e Desafio, a **meta científica é 98,5%**, enquanto o limite de impacto continua **70%**. O valor é uma regra de vitória fictícia, não uma afirmação sobre epidemiologia ou ciência. O relatório final mostra dificuldade, meta e multiplicadores de jogo usados. A dificuldade não pode ser alterada após começar.
+
+### Benchmark reproduzível
+
+`npm run benchmark` compila o motor e joga 576 partidas (16 seeds × 3 origens × 3 estratégias × 4 modos), sem dependências adicionais. Amostra da v0.7:
+
+| Modo | Partidas | Encerramento científico | Taxa observada | Seeds/origens com vencedores diferentes conforme a estratégia |
+|---|---:|---:|---:|---:|
+| Clássico | 144 | 0 | 0% | 0 |
+| Exploração | 144 | 0 | 0% | 0 |
+| Equilibrado | 144 | 40 | 27,8% | 17 |
+| Desafio | 144 | 89 | 61,8% | 10 |
+
+**Importante:** as taxas dependem do conjunto de testes e estratégias fixas, não são probabilidades garantidas ao jogador. Escolhas futuras de melhorias e táticas podem modificar os resultados, mas o benchmark ainda **não automatiza gastos durante a partida**.
+
+### Saves e comparações
+
+O schema de save é **v6**. Saves válidos v1–v5 são migrados automaticamente para o modo **Clássico v0.6**, preservando o comportamento anterior. A mesma chave `project-zero-save-v1` continua em uso; nenhuma exclusão ou limpeza de saves. Comparação entre partidas exige seed, origem, atributos **e modo idênticos**. Repetir a seed preserva o modo e zera compras e pontos usados.
 
 ## Como jogar e usar os pontos
 
@@ -37,7 +66,7 @@ As táticas são determinísticas, ficam registradas no boletim e alteram o esta
 
 ### Integridade dos saves
 
-O schema atual é **v5**, mas a chave `localStorage` permanece `project-zero-save-v1`. Saves válidos v1–v4 são migrados por `restoreGame`, preservando o estado e os eventos históricos da v4. O campo `agent.spentTactics` registra o gasto em operações. O verificador mantém a igualdade:
+O schema atual é **v6**, mas a chave `localStorage` permanece `project-zero-save-v1`. Saves válidos v1–v5 são migrados por `restoreGame`, preservando a seed, evolução, estado e histórico presente; partidas legadas mantêm as regras Clássicas. O campo `agent.spentTactics` registra o gasto em operações. O verificador mantém a igualdade:
 
 `pontos atuais + custo das melhorias + gasto em táticas = 2 × floor(dia / 10)`.
 
@@ -52,8 +81,8 @@ node --test tests/engine.test.mjs
 npm run build
 ```
 
-O motor e a prévia HTML offline foram testados neste ambiente. O build completo React/Vite deve ser validado em um ambiente com as dependências npm instaladas; não foi possível fazê-lo aqui. O teste da prévia cobre mapa, pausa no dia 10/20, descontos, compra de melhoria, fim de partida e repetição no Chromium desktop/mobile.
+O motor (34 testes), o benchmark e a prévia HTML offline (desktop/mobile) foram testados neste ambiente. O build completo React/Vite deve ser validado em um ambiente com as dependências npm instaladas; não foi possível fazê-lo aqui. O teste da prévia cobre mapa, pausa no dia 10/20, descontos, compra de melhoria, fim de partida e repetição no Chromium desktop/mobile.
 
-Ainda falta balanceamento estatístico para determinar a frequência de vitória de cada combinação de origem/seed/táticas e ajustar as decisões para partidas de 15–30 minutos. Não há multiplayer, backend, integrações com lives nem modelagem do mundo real.
+Ainda falta testar balanceamento envolvendo compra automatizada de melhorias, táticas e uma amostra maior de seeds. A meta de duração de 15–30 minutos continua não validada. Não há multiplayer, backend, integrações com lives nem modelagem do mundo real.
 
 **Dados cartográficos:** Natural Earth (domínio público); limites simplificados. Projeto isolado dos demais produtos da OWS.

@@ -76,3 +76,8 @@
 .lab-tactic>button:disabled{background:#1a303c;color:#62808d;cursor:not-allowed;border:1px solid #294353}
 .lab-spending{font-size:10px;color:#889fa8}
 @media(max-width:700px){.lab-tactic-grid{grid-template-columns:1fr}.lab-tactics{padding:12px}.lab-tactics-header h3{font-size:17px}}
+
+/* V0.7 — seleção de dificuldade e parâmetros auditáveis */
+.mode-field{margin-bottom:5px!important}
+.mode-hint{font-size:10px!important;color:#a9c7ae!important;line-height:1.55!important;margin:0 0 15px!important;padding:8px 10px;background:#142a2b;border-left:2px solid #b9ec87}
+.strategy-kpis{margin-top:4px}

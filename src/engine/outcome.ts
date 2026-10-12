@@ -3,13 +3,17 @@ import { COUNTRY_BY_ID, TOTAL_POPULATION } from '../data/countries.js';
 import { createGame, getWorldStats } from './simulation.js';
 import type { GameState } from './simulation.js';
 import type { Attributes } from './laboratory.js';
+import { MODES } from './balance.js';
+import type { GameMode } from './balance.js';
 
 export interface RunSummary {
   seed: number;
+  mode: GameMode;
   origin: string;
   attributes: Attributes;
   day: number;
   outcome: 'contained' | 'overwhelmed';
+  researchGoal: number;
   affectedPct: number;
   research: number;
   activeCountries: number;
@@ -23,20 +27,20 @@ export function summarizeRun(game: GameState): RunSummary | null {
   if (game.phase !== 'contained' && game.phase !== 'overwhelmed') return null;
   const stats = getWorldStats(game);
   return {
-    seed:game.seed, origin:game.origin, attributes:{...game.agent.attributes},
-    day:game.day, outcome:game.phase, affectedPct:stats.affectedPct,
+    seed:game.seed, mode:game.mode, origin:game.origin, attributes:{...game.agent.attributes},
+    day:game.day, outcome:game.phase, researchGoal:MODES[game.mode].researchGoal, affectedPct:stats.affectedPct,
     research:stats.research, activeCountries:stats.activeCountries,
     upgrades:game.agent.purchased.length, tacticsSpent:game.agent.spentTactics, events:game.globalEvents.length,
   };
 }
 
 export function comparableRuns(previous:RunSummary|null,current:RunSummary): boolean {
-  return !!previous && previous.seed===current.seed && previous.origin===current.origin &&
+  return !!previous && previous.seed===current.seed && previous.mode===current.mode && previous.origin===current.origin &&
     (Object.keys(current.attributes) as (keyof Attributes)[]).every(key=>previous.attributes[key]===current.attributes[key]);
 }
 
 export function repeatSeed(game:GameState):GameState {
-  const fresh = createGame(game.origin, game.seed);
+  const fresh = createGame(game.origin, game.seed, game.mode);
   return {...fresh,agent:{...fresh.agent,name:game.agent.name,attributes:{...game.agent.attributes}}};
 }
 
@@ -50,7 +54,7 @@ export function buildMilestones(game:GameState):Milestone[] {
     {threshold:25,field:'research' as const,label:'Pesquisa global chegou a 25%',category:'pesquisa' as const},
     {threshold:50,field:'research' as const,label:'Pesquisa global chegou a 50%',category:'pesquisa' as const},
     {threshold:75,field:'research' as const,label:'Pesquisa global chegou a 75%',category:'pesquisa' as const},
-    {threshold:100,field:'research' as const,label:'Pesquisa global chegou a 100%',category:'pesquisa' as const},
+    {threshold:MODES[game.mode].researchGoal,field:'research' as const,label:`Meta científica do modo (${MODES[game.mode].researchGoal}%) alcançada`,category:'pesquisa' as const},
   ];
   for(const t of thresholds){
     const record=game.history.find(h=>(t.field==='affected'?h.affected/TOTAL_POPULATION*100:h.research)>=t.threshold);

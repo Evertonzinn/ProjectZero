@@ -11,8 +11,10 @@ import type { RunSummary } from './engine/outcome';
 import type { AttributeId, UpgradeId } from './engine/laboratory';
 import type { TacticId } from './engine/tactics';
 import { COUNTRIES, COUNTRY_BY_ID } from './data/countries';
-import { adjustAttribute, advanceDay, applyTactic, buyUpgrade, changeOrigin, createGame, getWorldStats, restoreGame, setAgentName, startGame } from './engine/simulation';
+import { adjustAttribute, advanceDay, applyTactic, buyUpgrade, changeMode, changeOrigin, createGame, getWorldStats, restoreGame, setAgentName, startGame } from './engine/simulation';
 import type { GameState, Policy } from './engine/simulation';
+import { DEFAULT_MODE, MODES } from './engine/balance';
+import type { GameMode } from './engine/balance';
 
 const SAVE_KEY='project-zero-save-v1';
 const num=new Intl.NumberFormat('pt-BR');
@@ -39,7 +41,7 @@ function Icon({name}:{name:'globe'|'pause'|'play'|'step'|'save'|'reset'|'upload'
 }
 
 export default function App() {
-  const [game,setGame]=useState<GameState>(()=>createGame('BRA',nowSeed()));
+  const [game,setGame]=useState<GameState>(()=>createGame('BRA',nowSeed(),DEFAULT_MODE));
   const [selected,setSelected]=useState('BRA');
   const [playing,setPlaying]=useState(false);
   const [speed,setSpeed]=useState<1|5|20>(1);
@@ -93,12 +95,12 @@ export default function App() {
     setLabOpen(false);
     setOutcomeOpen(false);
     setPreviousRun(null);
-    setGame(createGame(selected,nowSeed()));
+    setGame(createGame(selected,nowSeed(),game.mode));
     setNotice('Novo cenário pronto. Selecione a origem e inicie.');
   };
   const newAfterOutcome=()=>{
     setPlaying(false);lastLabPrompt.current=null;setOutcomeOpen(false);setLabOpen(false);setPreviousRun(null);
-    setGame(createGame(game.origin,nowSeed()));setSelected(game.origin);
+    setGame(createGame(game.origin,nowSeed(),game.mode));setSelected(game.origin);
     setNotice('Nova seed criada. Configure o laboratório e comece.');
   };
   const repeat=()=>{
@@ -119,7 +121,7 @@ export default function App() {
       const parsed:unknown=JSON.parse(content);
       const restored=restoreGame(parsed);
       if(!restored){setNotice('Save incompatível ou inválido.');return;}
-      setPlaying(false);lastLabPrompt.current=null;setLabOpen(false);setOutcomeOpen(false);setPreviousRun(null);setGame(restored);setSelected(restored.origin);setNotice((parsed as {version?:number}).version!==5?'Save antigo migrado para v0.6.':'Partida restaurada.');
+      setPlaying(false);lastLabPrompt.current=null;setLabOpen(false);setOutcomeOpen(false);setPreviousRun(null);setGame(restored);setSelected(restored.origin);setNotice((parsed as {version?:number}).version!==6?'Save antigo migrado para v0.7 (modo Clássico).' :'Partida restaurada.');
     }catch{setNotice('Não foi possível carregar o save.');}
   };
   const news=game.news.filter(item=>newsTab==='all'||item.category===newsTab).slice(0,6);
@@ -127,7 +129,7 @@ export default function App() {
   return <div className="app">
     <header className="topbar">
       <div className="brand"><div className="brand-mark"><Icon name="globe"/></div><div className="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div>
-      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.6.0</span></span></div>
+      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.7.0</span></span></div>
       <div className="topright"><span className="server-dot"/><span>SIMULAÇÃO LOCAL</span><span className="top-date">SEED #{game.seed}</span></div>
     </header>
 
@@ -156,6 +158,11 @@ export default function App() {
             <label className="field-wrap"><span className="flag">{COUNTRY_BY_ID[game.origin].flag}</span><select value={game.origin} disabled={started} onChange={e=>selectCountry(e.target.value)} aria-label="País de origem">
               {COUNTRIES.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}
             </select><span className="field-chevron">⌄</span></label>
+            <div className="small-label">MODO DE JOGO</div>
+            <label className="field-wrap mode-field"><select value={game.mode} disabled={started} aria-label="Dificuldade do cenário" onChange={event=>setGame(g=>changeMode(g,event.target.value as GameMode))}>
+              {(['exploracao','equilibrado','desafio','classico'] as GameMode[]).map(mode=><option key={mode} value={mode}>{MODES[mode].title}</option>)}
+            </select><span className="field-chevron">⌄</span></label>
+            <p className="mode-hint">{MODES[game.mode].description} · Meta científica: {MODES[game.mode].researchGoal}%.</p>
             <div className="seed-row"><span>SEED DO CENÁRIO</span><span>#{game.seed}</span></div>
             <button className="lab-launch" onClick={openLab} type="button"><span className="lab-launch-icon">⬡</span><span><strong>LABORATÓRIO ZERO</strong><small>{game.agent.name||'PROTOCOLO SEM NOME'} · {game.agent.purchased.length} MELHORIAS</small></span><span className="lab-launch-arrow">↗</span></button>
             {game.agent.points>0&&<button className="lab-alert lab-alert-button" type="button" onClick={openLab}>◆ {ended?`${game.agent.points} pontos não utilizados · partida encerrada`:`${game.agent.points} pontos · CLIQUE PARA EVOLUIR`}</button>}
@@ -212,7 +219,7 @@ export default function App() {
           <div className="model-note"><div className="model-title">MODELO DE MUNDO</div><p>Os 18 territórios são conectados por uma malha abstrata. Clique no mapa para inspecionar cada país.</p><div className="model-stat">18 <span>NAÇÕES</span> <span className="slash">/</span> 01 <span>CENÁRIO</span></div></div>
         </aside>
       </div>
-      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.6.0 — ECONOMIA DE EVOLUÇÃO</span></footer>
+      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.7.0 — BALANCEAMENTO ESTRATÉGICO</span></footer>
     </div>
     {outcomeOpen&&ended&&<GameOutcome game={game} previous={previousRun} onClose={()=>setOutcomeOpen(false)} onRepeat={repeat} onNew={newAfterOutcome}/>}
     {labOpen&&<Laboratory game={game} selected={selected} onSelect={selectCountry} onTactic={(id:TacticId,countryId:string)=>setGame(g=>applyTactic(g,id,countryId))} onClose={()=>setLabOpen(false)} onName={name=>setGame(g=>setAgentName(g,name))} onAttribute={(id:AttributeId,delta:-1|1)=>setGame(g=>adjustAttribute(g,id,delta))} onPurchase={(id:UpgradeId)=>setGame(g=>buyUpgrade(g,id))}/>}

@@ -44,7 +44,7 @@ import { adjustAttribute, availableUpgrade, buyUpgrade, getLabModifiers, restore
 
 test('pontos iniciais são limitados a oito e atributos travam após iniciar', () => {
   let g=createGame('BRA',3);
-  assert.equal(g.version,5);
+  assert.equal(g.version,6);
   assert.equal(g.agent.attributes.propagacao,2);
   g=adjustAttribute(g,'propagacao',1);
   g=adjustAttribute(g,'resistencia',1);
@@ -101,7 +101,7 @@ test('save versão 1 é migrado mantendo mapa, dia e seed',()=>{
   const legacy={...old,version:1,countries:Object.fromEntries(Object.entries(old.countries).map(([id,{government,...c}])=>[id,c]))};
   const restored=restoreGame(legacy);
   assert.ok(restored);
-  assert.equal(restored.version,5);
+  assert.equal(restored.version,6);
   assert.equal(restored.day,21);
   assert.equal(restored.seed,84);
   for(const c of COUNTRIES){
@@ -166,7 +166,7 @@ test('salvamento v2 migra para v3 sem perder laboratório, pesquisa e seed',()=>
   const legacy={...g,version:2,agent:{name:g.agent.name,attributes:g.agent.attributes,points:g.agent.points,purchased:g.agent.purchased},countries:Object.fromEntries(Object.entries(g.countries).map(([id,{government,...c}])=>[id,c]))};
   const migrated=restoreGame(legacy);
   assert.ok(migrated);
-  assert.equal(migrated.version,5);
+  assert.equal(migrated.version,6);
   assert.equal(migrated.day,23);
   assert.equal(migrated.seed,12345);
   assert.deepEqual(migrated.agent,g.agent);
@@ -236,7 +236,7 @@ test('save v3 é migrado para v4 sem perder governos e pesquisas',()=>{
   const old={...legacyState,version:3};
   const restored=restoreGame(old);
   assert.ok(restored);
-  assert.equal(restored.version,5);
+  assert.equal(restored.version,6);
   assert.equal(restored.seed,g.seed);
   assert.equal(restored.day,g.day);
   assert.deepEqual(restored.countries,g.countries);
@@ -293,7 +293,7 @@ test('repetição preserva seed, país e atributos mas limpa progressão',()=>{
   for(let i=0;i<32&&game.phase==='running';i++)game=advanceDay(game);
   game=buyUpgrade(game,'correntes');
   const repeated=repeatSeed(game);
-  assert.equal(repeated.version,5);
+  assert.equal(repeated.version,6);
   assert.equal(repeated.phase,'setup');
   assert.equal(repeated.seed,9983);
   assert.equal(repeated.origin,'JPN');
@@ -370,11 +370,94 @@ test('save v4 migra para v5 com mesmo saldo e eventos; replays zeram gastos',()=
  const legacy={...g,version:4,agent};
  const restored=restoreGame(legacy);
  assert.ok(restored);
- assert.equal(restored.version,5);
+ assert.equal(restored.version,6);
  assert.equal(restored.agent.spentTactics,0);
  assert.deepEqual(restored.globalEvents,g.globalEvents);
  assert.equal(isGameState(restored),true);
  assert.equal(repeatSeed(restored).agent.spentTactics,0);
  const bad={...restored,agent:{...restored.agent,spentTactics:2}};
  assert.equal(isGameState(bad),false);
+});
+
+import { changeMode } from '../.engine-build/engine/simulation.js';
+import { MODES, DEFAULT_MODE } from '../.engine-build/engine/balance.js';
+
+test('v0.7 inicia no modo equilibrado e bloqueia alterações após começar', () => {
+  const initial=createGame('BRA',12345);
+  assert.equal(initial.mode,DEFAULT_MODE);
+  assert.equal(initial.mode,'equilibrado');
+  assert.equal(initial.version,6);
+  const changed=changeMode(initial,'desafio');
+  assert.equal(changed.mode,'desafio');
+  assert.equal(initial.mode,'equilibrado');
+  const started=startGame(changed);
+  assert.equal(changeMode(started,'exploracao'),started);
+  assert.equal(changeMode(initial,'invalid'),initial);
+  assert.throws(()=>createGame('BRA',12345,'invalid'));
+  assert.equal(isGameState(changed),true);
+});
+
+test('save versão 5 é migrado para Clássico, sem mudar a simulação de uma partida em andamento', () => {
+  let current=startGame(createGame('BRA',874,'classico'));
+  for(let i=0;i<73;i++)current=advanceDay(current);
+  const {mode,...original}=current;
+  const legacy={...original,version:5};
+  const migrated=restoreGame(legacy);
+  assert.ok(migrated);
+  assert.equal(migrated.version,6);
+  assert.equal(migrated.mode,'classico');
+  assert.deepEqual(migrated.countries,current.countries);
+  assert.deepEqual(advanceDay(migrated),advanceDay(current));
+  assert.equal(isGameState({...migrated,mode:'invalid'}),false);
+});
+
+test('os modos expõem objetivos estáveis e saves com modo inválido são rejeitados', () => {
+  assert.equal(MODES.classico.researchGoal,100);
+  assert.equal(MODES.equilibrado.researchGoal,98.5);
+  assert.equal(MODES.desafio.science>MODES.equilibrado.science,true);
+  const game=startGame(createGame('BRA',1928,'desafio'));
+  assert.equal(isGameState(game),true);
+  assert.equal(restoreGame({...game,mode:'undefined'}),null);
+});
+
+test('a mesma seed e origem podem produzir desfechos opostos com escolhas diferentes', () => {
+  let neutral=createGame('BRA',42,'equilibrado');
+  let faster=createGame('BRA',42,'equilibrado');
+  faster=adjustAttribute(faster,'propagacao',1);
+  faster=adjustAttribute(faster,'instabilidade',1);
+  neutral=startGame(neutral); faster=startGame(faster);
+  for(let i=0;i<240;i++){neutral=advanceDay(neutral);faster=advanceDay(faster);}
+  assert.equal(neutral.phase,'contained');
+  assert.equal(faster.phase,'overwhelmed');
+  assert.ok(neutral.day>faster.day);
+});
+
+test('resultado e replay carregam o modo e impedem comparar dificuldades diferentes', async () => {
+  const {summarizeRun,repeatSeed,comparableRuns}=await import('../.engine-build/engine/outcome.js');
+  let g=startGame(createGame('BRA',42,'equilibrado'));
+  while(g.phase==='running')g=advanceDay(g);
+  const summary=summarizeRun(g);
+  assert.ok(summary);
+  assert.equal(summary.mode,'equilibrado');
+  assert.equal(summary.researchGoal,98.5);
+  const repeat=repeatSeed(g);
+  assert.equal(repeat.mode,'equilibrado');
+  assert.equal(repeat.day,0);
+  assert.equal(repeat.phase,'setup');
+  assert.equal(comparableRuns(summary,{...summary,mode:'desafio'}),false);
+  assert.equal(comparableRuns(summary,{...summary,seed:5}),false);
+  assert.equal(comparableRuns(summary,{...summary}),true);
+});
+
+test('a amostra de balanceamento produz vitórias e derrotas no modo equilibrado', () => {
+  const seeds=[7,11,21,42,75,101,123,124];
+  const results=new Set();
+  for(const origin of ['BRA','USA','CHN'])for(const seed of seeds){
+    let g=startGame(createGame(origin,seed,'equilibrado'));
+    while(g.phase==='running' && g.day<350)g=advanceDay(g);
+    results.add(g.phase);
+    assert.equal(isGameState(g),true);
+  }
+  assert.ok(results.has('contained'));
+  assert.ok(results.has('overwhelmed'));
 });
