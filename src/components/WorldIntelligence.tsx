@@ -21,6 +21,7 @@ export function WorldIntelligence({game,selected,onSelect}:{game:GameState;selec
 
 export function GovernmentDetail({game,id}:{game:GameState;id:string}) {
  const s=game.countries[id],gov=s.government,persona=DOCTRINES[COUNTRY_DOCTRINE[id]],action=ACTIONS[gov.action];
+ const active=game.globalEvents.filter(event=>event.countryId===id && game.day<event.expiresDay);
  return <section className="gov-detail" aria-label="Estratégia governamental">
    <div className="gov-caption">INTELIGÊNCIA DE GOVERNO <b>AI RULES / V0.4</b></div>
    <div className="gov-doctrine"><small>PERFIL DE GOVERNO</small><strong>{persona.label}</strong><span>{persona.description}</span></div>
