@@ -6,6 +6,8 @@ import { Laboratory } from './components/Laboratory';
 import { GovernmentDetail, WorldIntelligence } from './components/WorldIntelligence';
 import { WorldEvents } from './components/WorldEvents';
 import { GameOutcome } from './components/GameOutcome';
+import { Onboarding } from './components/Onboarding';
+import { getGuidance, tacticFeedback, upgradeFeedback } from './engine/guide';
 import { repeatSeed, summarizeRun } from './engine/outcome';
 import type { RunSummary } from './engine/outcome';
 import type { AttributeId, UpgradeId } from './engine/laboratory';
@@ -17,6 +19,7 @@ import { DEFAULT_MODE, MODES } from './engine/balance';
 import type { GameMode } from './engine/balance';
 
 const SAVE_KEY='project-zero-save-v1';
+const GUIDE_KEY='project-zero-guide-v08';
 const num=new Intl.NumberFormat('pt-BR');
 const decimal=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2});
 const percent=(v:number)=>`${decimal.format(v)}%`;
@@ -47,6 +50,8 @@ export default function App() {
   const [speed,setSpeed]=useState<1|5|20>(1);
   const [notice,setNotice]=useState('');
   const [labOpen,setLabOpen]=useState(false);
+  const [tourOpen,setTourOpen]=useState(()=>{try{return localStorage.getItem(GUIDE_KEY)!=='complete';}catch{return true;}});
+  const [decisionFeedback,setDecisionFeedback]=useState('');
   const lastLabPrompt=useRef<string|null>(null);
   const [outcomeOpen,setOutcomeOpen]=useState(false);
   const [previousRun,setPreviousRun]=useState<RunSummary|null>(null);
@@ -57,6 +62,11 @@ export default function App() {
   const countryPct=(countryState.affected/country.population)*100;
   const started=game.phase!=='setup';
   const ended=game.phase==='contained'||game.phase==='overwhelmed';
+  const guidance=getGuidance(game,selected);
+  const closeTour=()=>{setTourOpen(false);try{localStorage.setItem(GUIDE_KEY,'complete');}catch{/* O tutorial funciona sem armazenamento */}};
+  const guidedAction=()=>{if(guidance.action==='lab')openLab();else if(guidance.action==='start')begin();else if(guidance.action==='outcome')setOutcomeOpen(true);};
+  const purchase=(id:UpgradeId)=>{const feedback=upgradeFeedback(game,id);if(!feedback)return;setGame(buyUpgrade(game,id));setDecisionFeedback(feedback);setNotice(feedback);};
+  const useTactic=(id:TacticId,countryId:string)=>{const next=applyTactic(game,id,countryId);const feedback=tacticFeedback(game,next,id,countryId);if(!feedback)return;setGame(next);setDecisionFeedback(feedback);setNotice(feedback);};
 
   useEffect(()=>{
     if(!playing||game.phase!=='running')return;
@@ -82,7 +92,7 @@ export default function App() {
     setSelected(id);
     setNotice('');
   };
-  const openLab=()=>{setPlaying(false);setLabOpen(true);};
+  const openLab=()=>{setPlaying(false);setDecisionFeedback('');setLabOpen(true);};
   const begin=()=>{
     setGame(current=>startGame(current));
     setPlaying(true);
@@ -129,8 +139,8 @@ export default function App() {
   return <div className="app">
     <header className="topbar">
       <div className="brand"><div className="brand-mark"><Icon name="globe"/></div><div className="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div>
-      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.7.0</span></span></div>
-      <div className="topright"><span className="server-dot"/><span>SIMULAÇÃO LOCAL</span><span className="top-date">SEED #{game.seed}</span></div>
+      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.8.0</span></span></div>
+      <div className="topright"><button type="button" className="help-button" onClick={()=>{setPlaying(false);setTourOpen(true);}} aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span className="server-dot"/><span>SIMULAÇÃO LOCAL</span><span className="top-date">SEED #{game.seed}</span></div>
     </header>
 
     <div className="page-body">
@@ -163,6 +173,7 @@ export default function App() {
               {(['exploracao','equilibrado','desafio','classico'] as GameMode[]).map(mode=><option key={mode} value={mode}>{MODES[mode].title}</option>)}
             </select><span className="field-chevron">⌄</span></label>
             <p className="mode-hint">{MODES[game.mode].description} · Meta científica: {MODES[game.mode].researchGoal}%.</p>
+            <div className={`guide-card guide-${guidance.tone}`} aria-live="polite"><span className="guide-kicker">◈ SEU PRÓXIMO PASSO</span><strong>{guidance.title}</strong><p>{guidance.description}</p>{guidance.action!=='none'&&<button type="button" onClick={guidedAction}>{guidance.actionLabel} ↗</button>}</div>
             <div className="seed-row"><span>SEED DO CENÁRIO</span><span>#{game.seed}</span></div>
             <button className="lab-launch" onClick={openLab} type="button"><span className="lab-launch-icon">⬡</span><span><strong>LABORATÓRIO ZERO</strong><small>{game.agent.name||'PROTOCOLO SEM NOME'} · {game.agent.purchased.length} MELHORIAS</small></span><span className="lab-launch-arrow">↗</span></button>
             {game.agent.points>0&&<button className="lab-alert lab-alert-button" type="button" onClick={openLab}>◆ {ended?`${game.agent.points} pontos não utilizados · partida encerrada`:`${game.agent.points} pontos · CLIQUE PARA EVOLUIR`}</button>}
@@ -219,9 +230,10 @@ export default function App() {
           <div className="model-note"><div className="model-title">MODELO DE MUNDO</div><p>Os 18 territórios são conectados por uma malha abstrata. Clique no mapa para inspecionar cada país.</p><div className="model-stat">18 <span>NAÇÕES</span> <span className="slash">/</span> 01 <span>CENÁRIO</span></div></div>
         </aside>
       </div>
-      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.7.0 — BALANCEAMENTO ESTRATÉGICO</span></footer>
+      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.8.0 — EXPERIÊNCIA DO JOGADOR</span></footer>
     </div>
+    {tourOpen&&<Onboarding onClose={closeTour} onLaboratory={openLab}/>}
     {outcomeOpen&&ended&&<GameOutcome game={game} previous={previousRun} onClose={()=>setOutcomeOpen(false)} onRepeat={repeat} onNew={newAfterOutcome}/>}
-    {labOpen&&<Laboratory game={game} selected={selected} onSelect={selectCountry} onTactic={(id:TacticId,countryId:string)=>setGame(g=>applyTactic(g,id,countryId))} onClose={()=>setLabOpen(false)} onName={name=>setGame(g=>setAgentName(g,name))} onAttribute={(id:AttributeId,delta:-1|1)=>setGame(g=>adjustAttribute(g,id,delta))} onPurchase={(id:UpgradeId)=>setGame(g=>buyUpgrade(g,id))}/>}
+    {labOpen&&<Laboratory game={game} selected={selected} onSelect={selectCountry} onTactic={useTactic} feedback={decisionFeedback} onClose={()=>setLabOpen(false)} onName={name=>setGame(g=>setAgentName(g,name))} onAttribute={(id:AttributeId,delta:-1|1)=>setGame(g=>adjustAttribute(g,id,delta))} onPurchase={purchase}/>}
   </div>;
 }
