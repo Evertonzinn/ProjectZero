@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useDialogFocus } from './useDialogFocus';
+import { useRef } from 'react';
 import { buildMilestones, comparableRuns, summarizeRun } from '../engine/outcome';
 import type { RunSummary } from '../engine/outcome';
 import { COUNTRY_BY_ID } from '../data/countries';
@@ -17,22 +18,17 @@ interface Props {
 }
 
 export function GameOutcome({game,previous,onClose,onRepeat,onNew}:Props) {
-  const closeRef=useRef<HTMLButtonElement>(null);
+  const modalRef=useRef<HTMLElement>(null);
+  useDialogFocus(modalRef,onClose);
   const current=summarizeRun(game);
-  useEffect(()=>{
-    closeRef.current?.focus();
-    const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape')onClose();};
-    window.addEventListener('keydown',onKey);
-    return ()=>window.removeEventListener('keydown',onKey);
-  },[onClose]);
   if (!current) return null;
   const victory=current.outcome==='overwhelmed';
   const comparable=comparableRuns(previous,current);
   const timeline=buildMilestones(game);
   const modifiers=getLabModifiers(game);
   return <div className="result-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <section className="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title">
-      <header className="result-topline"><span>PROJECT ZERO / RELATÓRIO DE MISSÃO <b>V0.9.1</b></span><button ref={closeRef} className="result-close" type="button" onClick={onClose} aria-label="Fechar resultado">✕</button></header>
+    <section ref={modalRef} tabIndex={-1} className="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title">
+      <header className="result-topline"><span>PROJECT ZERO / RELATÓRIO DE MISSÃO <b>V0.10</b></span><button className="result-close" type="button" onClick={onClose} aria-label="Fechar resultado">✕</button></header>
       <div className={`result-hero ${victory?'result-success':'result-containment'}`}>
         <span className="result-eyebrow">CENÁRIO ENCERRADO · DIA {current.day} · SEED #{current.seed} · REGRAS {current.ruleset.toUpperCase()}</span>
         <h2 id="result-title">{victory?'Limite crítico atingido.':'Contenção científica concluída.'}</h2>

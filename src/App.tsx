@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { readSave, writeSave, parseGameJson, MAX_IMPORT_BYTES } from './engine/persistence';
+import type { SaveSlot, StoragePort } from './engine/persistence';
 import type { ReactNode } from 'react';
 import { WorldMap } from './components/WorldMap';
 import { TrendChart } from './components/TrendChart';
@@ -18,8 +20,11 @@ import type { GameState, Policy } from './engine/simulation';
 import { DEFAULT_MODE, MODES } from './engine/balance';
 import type { GameMode } from './engine/balance';
 
-const SAVE_KEY='project-zero-save-v1';
 const GUIDE_KEY='project-zero-guide-v08';
+function gameStorage(): StoragePort {
+  try {return window.localStorage;}
+  catch {return {getItem(){throw new Error('Storage indisponível')},setItem(){throw new Error('Storage indisponível')}};}
+}
 const num=new Intl.NumberFormat('pt-BR');
 const decimal=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2});
 const percent=(v:number)=>`${decimal.format(v)}%`;
@@ -45,6 +50,8 @@ function Icon({name}:{name:'globe'|'pause'|'play'|'step'|'save'|'reset'|'upload'
 
 export default function App() {
   const [game,setGame]=useState<GameState>(()=>createGame('BRA',nowSeed(),DEFAULT_MODE));
+  const gameRef=useRef(game); gameRef.current=game;
+  const importRef=useRef<HTMLInputElement>(null);
   const [selected,setSelected]=useState('BRA');
   const [playing,setPlaying]=useState(false);
   const [speed,setSpeed]=useState<1|5|20>(1);
@@ -120,26 +127,61 @@ export default function App() {
     setGame(repeatSeed(game));setSelected(game.origin);setLabOpen(true);
     setNotice('Mesma seed e atributos iniciais. Reconfigure se desejar e inicie.');
   };
+  // Autosave é independente do save manual; nunca destrói o histórico anterior.
+  useEffect(()=>{
+    if(game.phase==='setup' || game.day===0)return;
+    // Captura ciclos de decisão inclusive quando a simulação está acelerada.
+    if(game.day%10!==0 && game.phase==='running')return;
+    const task=window.setTimeout(()=>writeSave(gameStorage(),'automatico',game),120);
+    return ()=>window.clearTimeout(task);
+  },[game]);
+  useEffect(()=>{
+    const persist=()=>{const current=gameRef.current;if(current.phase!=='setup' && current.day>0)writeSave(gameStorage(),'automatico',current);};
+    window.addEventListener('pagehide',persist);
+    const visibility=()=>{if(document.visibilityState==='hidden')persist();};
+    document.addEventListener('visibilitychange',visibility);
+    return ()=>{window.removeEventListener('pagehide',persist);document.removeEventListener('visibilitychange',visibility);};
+  },[]);
   const save=()=>{
-    try { localStorage.setItem(SAVE_KEY,JSON.stringify(game));setNotice('Partida salva neste navegador.'); }
-    catch {setNotice('Não foi possível salvar neste navegador.');}
+    const result=writeSave(gameStorage(),'manual',game);
+    setNotice(result.status==='ok'?'Save manual gravado. Cópia anterior preservada quando existente.':
+      result.status==='backup-failed'?'Não foi possível proteger o save anterior. Nenhum save foi sobrescrito.':
+      'Falha ao salvar. Verifique o espaço e as permissões do navegador.');
   };
-  const load=()=>{
+  const applyLoaded=(restored:GameState,source:string)=>{
+    if(game.phase!=='setup' && game.day>0 && !window.confirm(`Substituir a partida atual pelo ${source}? Exporte-a antes, se desejar preservar.`))return;
+    setPlaying(false);lastLabPrompt.current=null;setLabOpen(false);setOutcomeOpen(false);
+    setPreviousRun(null);setDecisionFeedback('');setGame(restored);setSelected(restored.origin);
+    setNotice(`${source} restaurado. Simulação pausada no dia ${restored.day}.`);
+  };
+  const load=(slot:SaveSlot)=>{
+    const result=readSave(gameStorage(),slot);
+    if(result.status==='ok')applyLoaded(result.game,slot==='manual'?'save manual':slot==='automatico'?'autosave':'backup manual');
+    else setNotice(result.status==='missing'?'Nenhuma partida encontrada neste slot.':
+      result.status==='invalid'?'Save inválido ou corrompido. Tente o backup ou o autosave.':'Armazenamento indisponível neste navegador.');
+  };
+  const exportSave=()=>{
+    const blob=new Blob([JSON.stringify(game,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=`project-zero-seed-${game.seed}-dia-${game.day}.json`;
+    document.body.appendChild(a);a.click();a.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+    setNotice('Arquivo JSON exportado. Guarde-o para recuperar em outro navegador.');
+  };
+  const importSave=async(file:File|undefined)=>{
+    if(!file)return;
+    if(file.size>MAX_IMPORT_BYTES){setNotice('Arquivo grande demais para ser um save válido (máximo 2,5 MB).');return;}
     try {
-      const content=localStorage.getItem(SAVE_KEY);
-      if(!content){setNotice('Nenhuma partida salva encontrada.');return;}
-      const parsed:unknown=JSON.parse(content);
-      const restored=restoreGame(parsed);
-      if(!restored){setNotice('Save incompatível ou inválido.');return;}
-      setPlaying(false);lastLabPrompt.current=null;setLabOpen(false);setOutcomeOpen(false);setPreviousRun(null);setGame(restored);setSelected(restored.origin);setNotice((parsed as {version?:number}).version!==7?'Save antigo restaurado com as regras originais.' :'Partida restaurada.');
-    }catch{setNotice('Não foi possível carregar o save.');}
+      const restored=parseGameJson(await file.text());
+      if(restored.status!=='ok'){setNotice('Arquivo inválido. Nenhuma partida foi substituída.');return;}
+      applyLoaded(restored.game,'arquivo JSON');
+    }catch {setNotice('Não foi possível ler o arquivo. Nenhuma partida foi alterada.');}
   };
   const news=game.news.filter(item=>newsTab==='all'||item.category===newsTab).slice(0,6);
 
   return <div className="app">
     <header className="topbar">
       <div className="brand"><div className="brand-mark"><Icon name="globe"/></div><div className="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div>
-      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.9.1</span></span></div>
+      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.10.0</span></span></div>
       <div className="topright"><button type="button" className="help-button" onClick={()=>{setPlaying(false);setTourOpen(true);}} aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span className="server-dot"/><span>SIMULAÇÃO LOCAL</span><span className="top-date">SEED #{game.seed}</span></div>
     </header>
 
@@ -181,7 +223,12 @@ export default function App() {
             {ended&&<div className="outcome-box"><strong>{game.phase==='contained'?'CONTENÇÃO CIENTÍFICA':'LIMITE CRÍTICO ATINGIDO'}</strong><span>Simulação encerrada no dia {game.day}.</span><button type="button" className="outline-btn" onClick={()=>setOutcomeOpen(true)}>VER RELATÓRIO FINAL ↗</button></div>}
           </div>
           <div className="panel-heading secondary"><span className="heading-square"/> CONTROLES RÁPIDOS <span className="panel-number">02</span></div>
-          <div className="quick-panel"><button onClick={save} type="button"><Icon name="save"/> Salvar partida <span>⌘</span></button><button onClick={load} type="button"><Icon name="upload"/> Carregar partida <span>↗</span></button><button onClick={reset} type="button"><Icon name="reset"/> Reiniciar cenário <span>↺</span></button></div>
+          <div className="quick-panel"><button onClick={save} type="button"><Icon name="save"/> Salvar partida <span>⌘</span></button><button onClick={()=>load('manual')} type="button"><Icon name="upload"/> Carregar partida <span>↗</span></button><button onClick={()=>load('automatico')} type="button"><Icon name="upload"/> Recuperar sessão <span>↶</span></button>
+            <button onClick={()=>load('backup')} type="button"><Icon name="upload"/> Recuperar backup <span>↶</span></button>
+            <button onClick={exportSave} type="button"><Icon name="save"/> Exportar arquivo JSON <span>↓</span></button>
+            <button onClick={()=>importRef.current?.click()} type="button"><Icon name="upload"/> Importar arquivo JSON <span>↑</span></button>
+            <input ref={importRef} className="file-import-hidden" type="file" accept=".json,application/json" aria-label="Selecionar save JSON para importar" onChange={async e=>{const file=e.target.files?.[0];e.target.value='';await importSave(file);}} />
+            <button onClick={reset} type="button"><Icon name="reset"/> Reiniciar cenário <span>↺</span></button></div>
           <div className="sidebar-note"><span className="note-mark">!</span><p>Protótipo estratégico. Todas as estatísticas, decisões e conexões são abstrações de gameplay.</p></div>
         </aside>
 
@@ -230,7 +277,7 @@ export default function App() {
           <div className="model-note"><div className="model-title">MODELO DE MUNDO</div><p>Os 18 territórios são conectados por uma malha abstrata. Clique no mapa para inspecionar cada país.</p><div className="model-stat">18 <span>NAÇÕES</span> <span className="slash">/</span> 01 <span>CENÁRIO</span></div></div>
         </aside>
       </div>
-      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.9.1 — AUDITORIA DE BALANCEAMENTO</span></footer>
+      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.10 — ESTABILIDADE E QUALIDADE</span></footer>
     </div>
     {tourOpen&&<Onboarding onClose={closeTour} onLaboratory={openLab}/>}
     {outcomeOpen&&ended&&<GameOutcome game={game} previous={previousRun} onClose={()=>setOutcomeOpen(false)} onRepeat={repeat} onNew={newAfterOutcome}/>}

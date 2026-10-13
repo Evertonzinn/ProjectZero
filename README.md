@@ -1,65 +1,57 @@
-# Project Zero — Rebalanceamento Estratégico (Alpha v0.9.1)
+# Project Zero — Alpha v0.10.0 (Estabilidade e Qualidade)
 
-Jogo de estratégia global **inteiramente fictício** em React 19 + Vite + TypeScript, mapa 2D, laboratório, governos autônomos, eventos causais, vitória/derrota, tutorial, repetição da seed e auditoria determinística com sete bots. Não representa epidemiologia real.
+Jogo de estratégia global fictícia em **React + TypeScript + Vite**, com motor determinístico, 18 países, laboratório de evolução, governos autônomos, eventos, quatro modos, resultados e benchmarks. **Sem backend, banco de dados, contas, telemetria ou dependências novas nesta versão.**
 
-## O que mudou na v0.9.1
+## O que a v0.10 acrescenta
 
-A auditoria v0.9 mostrou que três estratégias comprando melhorias e ações táticas venciam **100%** da amostra no modo Desafio (48 partidas por estratégia). Corrigimos o incentivo de gastar sempre em impulsos e upgrades, **sem alterar partidas já salvas**:
+- **Save manual** permanece na chave histórica `project-zero-save-v1`. A gravação de um novo save manual guarda uma **cópia válida do anterior** em `project-zero-manual-backup-v010`, se diferente. Em caso de falha ao gravar o backup, o save manual não é sobrescrito.
+- **Autosave independente** em `project-zero-autosave-v010`: tenta salvar nos marcos de 10 dias, após decisões em tais marcos, ao encerrar, ao ocultar a página e em `pagehide`. Não substitui o save manual. O navegador pode encerrar abruptamente sem disparar eventos, então autosave não é garantia absoluta de recuperação.
+- **Recuperar sessão**, **Recuperar backup** e **Carregar partida** são três controles separados. Os dois últimos nunca apagam automaticamente o slot de origem. Carregar um slot na partida em andamento solicita confirmação.
+- **Exportar JSON** e **Importar JSON** permitem transferir o estado entre navegadores. Importações exigem JSON válido, tamanho máximo 2,5 MB e validação pelo `restoreGame` (incluindo versões antigas). Arquivos inválidos não alteram a partida aberta.
+- **Foco e teclado:** o tutorial, laboratório e relatório mantêm Tab/Shift+Tab dentro do diálogo, fecham com Escape e restauram o foco original quando possível. Os botões rápidos reaparecem no layout mobile. Animações respeitam `prefers-reduced-motion`.
+- **Saves e gameplay:** schema **v7 inalterado**. Nenhuma alteração nas regras de evolução, no saldo ou nas taxas do benchmark. Os saves v1–v6 continuam migrando conforme a v0.9.1.
 
-- Novas partidas (exceto modo Clássico) usam o conjunto de regras **Revisado**.
-- Saves v1–v6 passam pelo migrador para schema **v7**, com regras **Legadas**: expansão, bônus e custos continuam idênticos aos originais. O modo Clássico permanece legado também em novas partidas.
-- Impulso local revisado: até **0,3 ponto percentual** no país ativo por uso, em vez de 1,2 p.p. no legado.
-- O custo de cada ação tática cresce **2 PT a cada duas utilizações da mesma ação** (`2, 2, 4, 4, 6, 6...` no Impulso; `3, 3, 5, 5...` no Atrito). Gastos totais continuam auditáveis. O painel e o feedback mostram o custo real.
-- Bônus ofensivos dos upgrades foram recalibrados. No Revisado, cada evolução adquirida aumenta também o avanço da pesquisa mundial (8% cada); cada Impulso local acrescenta 2,5% ao fator de pesquisa. Contrapartidas aparecem nos modificadores do Laboratório. Esses percentuais são multiplicadores simbólicos de gameplay.
-- Repetir uma partida mantém **seed, origem, atributos, modo e conjunto de regras**. Comparações exigem todos esses critérios; não comparam regimes diferentes como equivalentes.
-- O relatório HTML offline e JSON documentam a diferença entre Legado e Revisado sem alterar os arquivos da v0.9.
+### Como testar a recuperação
 
-## Rodar no Debian
+1. Inicie uma partida, avance até o dia 10 e use **Salvar partida**. Continue até o dia 20 e salve novamente para produzir um **backup manual** do dia 10.
+2. Continue alguns dias e use **Recuperar sessão**: o autosave deve permitir retomar o último estado salvo automaticamente (sem afetar o save manual).
+3. Use **Recuperar backup** para carregar o estado anterior. Se estiver jogando, confirme a substituição ou cancele sem alterar o jogo.
+4. Use **Exportar JSON**, inicie uma nova partida e **Importar JSON**: após confirmar, os indicadores, dia, seed e modo devem coincidir com o arquivo.
+5. Experimente um arquivo JSON malformado; o jogo deve avisar e manter o estado atual.
+
+**Importante:** armazenamento de navegador pode ser limpo, bloqueado ou atingir a cota. Exporte arquivos regularmente para conservar partidas fora do navegador. A versão não apaga automaticamente chaves antigas.
+
+## Executar no Debian
 
 ```bash
-npm run test:engine
-npm run test:bots
+cd /mnt/ows-data/games/ProjectZero
+npm run test:quality
 npm run benchmark
-npm run benchmark:bots
-npm run benchmark:compare
 npm run build
 npm run dev
 ```
 
-Não execute `npm install` novamente se as dependências já estão instaladas e funcionando. Para acessar pela rede local, o Vite usa `--host 0.0.0.0`.
+Não é necessário repetir `npm install` se as dependências da v0.9.1 estão instaladas.
 
-A prévia `preview-offline.html` executa sem npm ou conexão com a internet; `python3 scripts/build_preview.py` regenera o arquivo após `tsc -p tsconfig.engine.json`.
+### Verificações realizadas no ambiente de geração
 
-## Resultados empíricos — modo Desafio
+- `npm run test:quality`: **55/55 testes** (40+ testes anteriores e 9 de persistência).
+- `npm run benchmark`: **576 partidas**, resultados idênticos ao benchmark anterior.
+- `node --check` da prévia HTML offline aprovado.
+- Prévia validada no Chromium headless desktop e mobile: tutorial, save, 5 dias simulados, download JSON, rejeição de slot vazio e restauração do save manual, **sem erros JavaScript**.
+- TSX com checagem sintática por TypeScript. **Build React/Vite completo ainda depende de `npm run build` no Debian**, onde as dependências já existem.
+- O teste de navegador usou HTML injetado porque o ambiente de automação bloqueia navegação por URL local; não é teste de instalação de site publicado.
 
-Amostra fixa: **16 seeds × 3 origens × 7 políticas de bot × 4 modos**, em dois conjuntos de regras: **2.688 partidas comparadas**. O modo Clássico foi mantido no legado. Todas as estratégias usam o mesmo motor, sem olhar o futuro.
+### Arquivos importantes
 
-| Estratégia | Vitórias no legado | Vitórias no revisado |
-|---|---:|---:|
-| Observador | 29,2% | 29,2% |
-| Economizador (controle) | 66,7% | 54,2% |
-| Concentrado | 100% | 85,4% |
-| Conectividade | 100% | 22,9% |
-| Discreto | 81,3% | 16,7% |
-| Ruptura | 54,2% | 6,3% |
-| Adaptativo | 100% | 54,2% |
+- `src/engine/persistence.ts`: validação, leitura e gravação com slots independentes e proteção do backup.
+- `src/components/useDialogFocus.ts`: teclado e foco de modais.
+- `src/App.tsx`: controles React, importação/exportação e autosave.
+- `scripts/build_preview.py`: prévia estática com o mesmo motor e persistência.
+- `tests/persistence.test.mjs`: testes de corrupção, cota, recuperação, importação e determinismo.
 
-**Isso não prova balanceamento definitivo.** São frequências desse conjunto fixo de estratégias, não chances de vitória universais. Concentrado continua forte; Ruptura pode estar fraco demais no modo Desafio. O modo Exploração é deliberadamente permissivo.
+### Escopo futuro
 
-Arquivos de auditoria:
-- `reports/balanceamento-v091.html`: relatório estático para abrir localmente.
-- `reports/benchmark-comparativo-v091.json`: resumo completo, seeds e resultados comparáveis.
-- `scripts/compare-rulesets.mjs`: regenera os dois arquivos.
-- `scripts/strategy-bots.mjs`: políticas de bots independentes do frontend.
+A v0.10 melhora a qualidade da versão alpha, mas **ainda não equivale a auditoria completa de acessibilidade ou beta público validado**. Permanecem necessários testes em Firefox real, sessões humanas de 15–30 minutos, compatibilidade cross-browser de gravação/arquivo e uma revisão de implantação estática.
 
-## Compatibilidade de saves
-
-A chave `localStorage` permanece `project-zero-save-v1`. `GameState.version` evoluiu para **7** e agora armazena `ruleset` (`legado`/`revisado`) e `agent.tacticUses`. O validador impede saldo negativo, combinações inválidas e discrepância entre contagem de ações e total gasto no regime revisado. Em saves antigos, a contagem histórica por tipo de ação não existe, portanto é inicializada em zero e **não é usada** para alterar preço de táticas legadas.
-
-Uma migração **não modifica um save permanentemente antes de o jogador optar por salvar**. Não há exclusão automática, alteração de outros repositórios ou backend.
-
-## Limites e próximos passos
-
-- A etapa de balanceamento com bots é automatizada; testes humanos ainda são necessários.
-- Testes do motor e navegador offline não substituem `npm run build` no Debian com todas as dependências.
-- O próximo marco v0.10 deve priorizar QA, restauração segura de saves e acessibilidade antes de acrescentar grandes mecânicas.
+Projeto totalmente fictício. Nenhum modelo representa epidemiologia real ou previsão do mundo real. Código independente dos projetos Motora e OWSPDV.
