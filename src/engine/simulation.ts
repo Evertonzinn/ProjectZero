@@ -62,9 +62,13 @@ function noise(seed: number, day: number, id: string, channel: number): number {
 }
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const policyStrength: Record<Policy, number> = { normal: 1, atencao: .82, restricoes: .57, emergencia: .39 };
+// IDs recebidos de saves ou controles devem ser propriedades próprias do catálogo.
+function isCountryId(value: unknown): value is string {
+  return typeof value === 'string' && Object.hasOwn(COUNTRY_BY_ID, value);
+}
 
 export function createGame(origin = 'BRA', seed = 20261012, mode: GameMode = DEFAULT_MODE, ruleset: Ruleset = mode==='classico'?'legado':CURRENT_RULESET): GameState {
-  if (!COUNTRY_BY_ID[origin]) throw new Error('País de origem inválido');
+  if (!isCountryId(origin)) throw new Error('País de origem inválido');
   if (!Number.isSafeInteger(seed)) throw new Error('Seed inválida');
   if (!isGameMode(mode)) throw new Error('Modo inválido');
   if (ruleset!=='legado' && ruleset!=='revisado') throw new Error('Regras inválidas');
@@ -77,7 +81,7 @@ export function changeMode(game: GameState, mode: GameMode): GameState {
   return game.phase==='setup' && isGameMode(mode) ? {...game,mode,ruleset:mode==='classico'?'legado':game.mode==='classico'?'revisado':game.ruleset} : game;
 }
 export function changeOrigin(game: GameState, id: string): GameState {
-  if (game.phase!=='setup' || !COUNTRY_BY_ID[id]) return game;
+  if (game.phase!=='setup' || !isCountryId(id)) return game;
   return {...game,origin:id};
 }
 export function getWorldStats(game: GameState) {
@@ -318,7 +322,7 @@ export function advanceDay(game: GameState): GameState {
 function isGameStateBase(value: unknown, version:1|2|3|4|5|6|7): boolean {
   if (!value || typeof value!=='object') return false;
   const g=value as Partial<GameState>;
-  if (g.version!==version || !Number.isSafeInteger(g.seed) || !Number.isInteger(g.day) || (g.day??-1)<0 || !g.origin || !COUNTRY_BY_ID[g.origin]) return false;
+  if (g.version!==version || !Number.isSafeInteger(g.seed) || !Number.isInteger(g.day) || (g.day??-1)<0 || !isCountryId(g.origin)) return false;
   if (!['setup','running','contained','overwhelmed'].includes(g.phase??'')) return false;
   if (!g.countries || typeof g.countries!=='object' || !Array.isArray(g.news) || !Array.isArray(g.history)) return false;
   if (g.news.length>1000 || g.history.length>1000) return false;
@@ -342,7 +346,7 @@ export function isGameState(value: unknown): value is GameState {
   if (!isGameMode(g.mode) || !['legado','revisado'].includes(g.ruleset)) return false;
   if (!Array.isArray(g.globalEvents) || g.globalEvents.length>120) return false;
   if (!g.globalEvents.every((e,i)=>{
-    if (!e || typeof e!=='object' || !EVENT_KINDS.includes(e.kind) || !COUNTRY_BY_ID[e.countryId] ||
+    if (!e || typeof e!=='object' || !EVENT_KINDS.includes(e.kind) || !isCountryId(e.countryId) ||
       !Number.isInteger(e.day) || e.day<1 || e.day>g.day ||
       !Number.isInteger(e.expiresDay) || e.expiresDay!==e.day+EVENT_DEFINITIONS[e.kind].duration ||
       e.id!==`event-${e.day}-${e.countryId}-${e.kind}` ||
@@ -359,7 +363,7 @@ export function isGameState(value: unknown): value is GameState {
       Number.isInteger(gov.since) && gov.since>=0 && gov.since<=g.day &&
       Number.isInteger(gov.until) && gov.until>=gov.since && gov.until<=g.day+13 &&
       ['budget','stability','pressure'].every(k=>typeof gov[k as keyof GovernmentState]==='number' && Number.isFinite(gov[k as keyof GovernmentState]) && (gov[k as keyof GovernmentState] as number)>=0 && (gov[k as keyof GovernmentState] as number)<=100) &&
-      (gov.partner===null || (COUNTRY_BY_ID[gov.partner] && c.links.includes(gov.partner))) &&
+      (gov.partner===null || (isCountryId(gov.partner) && c.links.includes(gov.partner))) &&
       typeof gov.reason==='string' && gov.reason.length<=180 &&
       (gov.action==='cooperar' || gov.partner===null);
   })) return false;
