@@ -1,0 +1,814 @@
+{
+  "setup": {
+    "seeds": [
+      7,
+      11,
+      21,
+      42,
+      75,
+      101,
+      123,
+      124,
+      222,
+      333,
+      444,
+      555,
+      777,
+      1001,
+      2026,
+      20261012
+    ],
+    "origins": [
+      "BRA",
+      "USA",
+      "CHN"
+    ],
+    "modes": [
+      "classico",
+      "exploracao",
+      "equilibrado",
+      "desafio"
+    ],
+    "bots": [
+      "observador",
+      "economizador",
+      "concentrado",
+      "conectividade",
+      "discreto",
+      "ruptura",
+      "adaptativo"
+    ]
+  },
+  "total": 1344,
+  "rows": [
+    {
+      "modo": "classico",
+      "estrategia": "observador",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 166.7,
+      "melhorias_medias": 0,
+      "taticas_medias": 0,
+      "pontos_nao_usados": 32.75
+    },
+    {
+      "modo": "classico",
+      "estrategia": "economizador",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 147.7,
+      "melhorias_medias": 0,
+      "taticas_medias": 0,
+      "pontos_nao_usados": 28.63
+    },
+    {
+      "modo": "classico",
+      "estrategia": "concentrado",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 94.9,
+      "melhorias_medias": 3,
+      "taticas_medias": 5.08,
+      "pontos_nao_usados": 0.17
+    },
+    {
+      "modo": "classico",
+      "estrategia": "conectividade",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 114,
+      "melhorias_medias": 3,
+      "taticas_medias": 6.83,
+      "pontos_nao_usados": 1.21
+    },
+    {
+      "modo": "classico",
+      "estrategia": "discreto",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 137.4,
+      "melhorias_medias": 3,
+      "taticas_medias": 5.79,
+      "pontos_nao_usados": 1.21
+    },
+    {
+      "modo": "classico",
+      "estrategia": "ruptura",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 126.5,
+      "melhorias_medias": 3,
+      "taticas_medias": 5,
+      "pontos_nao_usados": 1.29
+    },
+    {
+      "modo": "classico",
+      "estrategia": "adaptativo",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 108.9,
+      "melhorias_medias": 3,
+      "taticas_medias": 6.42,
+      "pontos_nao_usados": 0
+    },
+    {
+      "modo": "exploracao",
+      "estrategia": "observador",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 155.7,
+      "melhorias_medias": 0,
+      "taticas_medias": 0,
+      "pontos_nao_usados": 30.38
+    },
+    {
+      "modo": "exploracao",
+      "estrategia": "economizador",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 138.8,
+      "melhorias_medias": 0,
+      "taticas_medias": 0,
+      "pontos_nao_usados": 26.83
+    },
+    {
+      "modo": "exploracao",
+      "estrategia": "concentrado",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 91,
+      "melhorias_medias": 3,
+      "taticas_medias": 4.56,
+      "pontos_nao_usados": 0.33
+    },
+    {
+      "modo": "exploracao",
+      "estrategia": "conectividade",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 108.9,
+      "melhorias_medias": 3,
+      "taticas_medias": 6.35,
+      "pontos_nao_usados": 1.04
+    },
+    {
+      "modo": "exploracao",
+      "estrategia": "discreto",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 129.8,
+      "melhorias_medias": 3,
+      "taticas_medias": 5.35,
+      "pontos_nao_usados": 0.98
+    },
+    {
+      "modo": "exploracao",
+      "estrategia": "ruptura",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 118.1,
+      "melhorias_medias": 3,
+      "taticas_medias": 4.6,
+      "pontos_nao_usados": 0.94
+    },
+    {
+      "modo": "exploracao",
+      "estrategia": "adaptativo",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 103.8,
+      "melhorias_medias": 3,
+      "taticas_medias": 5.88,
+      "pontos_nao_usados": 0.42
+    },
+    {
+      "modo": "equilibrado",
+      "estrategia": "observador",
+      "partidas": 48,
+      "vit_player_pct": 54.2,
+      "contenção_pct": 45.8,
+      "dias_medios": 161.6,
+      "melhorias_medias": 0,
+      "taticas_medias": 0,
+      "pontos_nao_usados": 31.5
+    },
+    {
+      "modo": "equilibrado",
+      "estrategia": "economizador",
+      "partidas": 48,
+      "vit_player_pct": 95.8,
+      "contenção_pct": 4.2,
+      "dias_medios": 147.5,
+      "melhorias_medias": 0,
+      "taticas_medias": 0,
+      "pontos_nao_usados": 28.58
+    },
+    {
+      "modo": "equilibrado",
+      "estrategia": "concentrado",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 94.9,
+      "melhorias_medias": 3,
+      "taticas_medias": 5.08,
+      "pontos_nao_usados": 0.17
+    },
+    {
+      "modo": "equilibrado",
+      "estrategia": "conectividade",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 114,
+      "melhorias_medias": 3,
+      "taticas_medias": 6.83,
+      "pontos_nao_usados": 1.21
+    },
+    {
+      "modo": "equilibrado",
+      "estrategia": "discreto",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 137.4,
+      "melhorias_medias": 3,
+      "taticas_medias": 5.79,
+      "pontos_nao_usados": 1.21
+    },
+    {
+      "modo": "equilibrado",
+      "estrategia": "ruptura",
+      "partidas": 48,
+      "vit_player_pct": 95.8,
+      "contenção_pct": 4.2,
+      "dias_medios": 126.4,
+      "melhorias_medias": 3,
+      "taticas_medias": 5,
+      "pontos_nao_usados": 1.29
+    },
+    {
+      "modo": "equilibrado",
+      "estrategia": "adaptativo",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 108.9,
+      "melhorias_medias": 3,
+      "taticas_medias": 6.42,
+      "pontos_nao_usados": 0
+    },
+    {
+      "modo": "desafio",
+      "estrategia": "observador",
+      "partidas": 48,
+      "vit_player_pct": 29.2,
+      "contenção_pct": 70.8,
+      "dias_medios": 158.4,
+      "melhorias_medias": 0,
+      "taticas_medias": 0,
+      "pontos_nao_usados": 30.67
+    },
+    {
+      "modo": "desafio",
+      "estrategia": "economizador",
+      "partidas": 48,
+      "vit_player_pct": 66.7,
+      "contenção_pct": 33.3,
+      "dias_medios": 151.9,
+      "melhorias_medias": 0,
+      "taticas_medias": 0,
+      "pontos_nao_usados": 29.46
+    },
+    {
+      "modo": "desafio",
+      "estrategia": "concentrado",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 98.6,
+      "melhorias_medias": 3,
+      "taticas_medias": 5.38,
+      "pontos_nao_usados": 0.04
+    },
+    {
+      "modo": "desafio",
+      "estrategia": "conectividade",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 118.1,
+      "melhorias_medias": 3,
+      "taticas_medias": 7.44,
+      "pontos_nao_usados": 1.17
+    },
+    {
+      "modo": "desafio",
+      "estrategia": "discreto",
+      "partidas": 48,
+      "vit_player_pct": 81.3,
+      "contenção_pct": 18.8,
+      "dias_medios": 143.2,
+      "melhorias_medias": 3,
+      "taticas_medias": 6.21,
+      "pontos_nao_usados": 1.17
+    },
+    {
+      "modo": "desafio",
+      "estrategia": "ruptura",
+      "partidas": 48,
+      "vit_player_pct": 54.2,
+      "contenção_pct": 45.8,
+      "dias_medios": 129.4,
+      "melhorias_medias": 3,
+      "taticas_medias": 5.33,
+      "pontos_nao_usados": 0.92
+    },
+    {
+      "modo": "desafio",
+      "estrategia": "adaptativo",
+      "partidas": 48,
+      "vit_player_pct": 100,
+      "contenção_pct": 0,
+      "dias_medios": 112.8,
+      "melhorias_medias": 3,
+      "taticas_medias": 6.63,
+      "pontos_nao_usados": 0.04
+    }
+  ],
+  "different": [
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 7
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 11
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 21
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 42
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 75
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 101
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 123
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 124
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 222
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 333
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 444
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 555
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 777
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 1001
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 2026
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "BRA",
+      "seed": 20261012
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "USA",
+      "seed": 123
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "USA",
+      "seed": 124
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "USA",
+      "seed": 222
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "USA",
+      "seed": 777
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "USA",
+      "seed": 2026
+    },
+    {
+      "mode": "equilibrado",
+      "origin": "USA",
+      "seed": 20261012
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 7
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 11
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 21
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 42
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 75
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 101
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 123
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 124
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 222
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 333
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 444
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 555
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 777
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 1001
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 2026
+    },
+    {
+      "mode": "desafio",
+      "origin": "BRA",
+      "seed": 20261012
+    },
+    {
+      "mode": "desafio",
+      "origin": "USA",
+      "seed": 11
+    },
+    {
+      "mode": "desafio",
+      "origin": "USA",
+      "seed": 75
+    },
+    {
+      "mode": "desafio",
+      "origin": "USA",
+      "seed": 101
+    },
+    {
+      "mode": "desafio",
+      "origin": "USA",
+      "seed": 123
+    },
+    {
+      "mode": "desafio",
+      "origin": "USA",
+      "seed": 124
+    },
+    {
+      "mode": "desafio",
+      "origin": "USA",
+      "seed": 222
+    },
+    {
+      "mode": "desafio",
+      "origin": "USA",
+      "seed": 333
+    },
+    {
+      "mode": "desafio",
+      "origin": "USA",
+      "seed": 555
+    },
+    {
+      "mode": "desafio",
+      "origin": "USA",
+      "seed": 777
+    },
+    {
+      "mode": "desafio",
+      "origin": "USA",
+      "seed": 1001
+    },
+    {
+      "mode": "desafio",
+      "origin": "USA",
+      "seed": 2026
+    },
+    {
+      "mode": "desafio",
+      "origin": "USA",
+      "seed": 20261012
+    },
+    {
+      "mode": "desafio",
+      "origin": "CHN",
+      "seed": 7
+    },
+    {
+      "mode": "desafio",
+      "origin": "CHN",
+      "seed": 21
+    },
+    {
+      "mode": "desafio",
+      "origin": "CHN",
+      "seed": 42
+    },
+    {
+      "mode": "desafio",
+      "origin": "CHN",
+      "seed": 75
+    },
+    {
+      "mode": "desafio",
+      "origin": "CHN",
+      "seed": 222
+    },
+    {
+      "mode": "desafio",
+      "origin": "CHN",
+      "seed": 2026
+    }
+  ],
+  "controlComparisons": [
+    {
+      "mode": "classico",
+      "strategy": "observador",
+      "controlled": false,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": 19
+    },
+    {
+      "mode": "classico",
+      "strategy": "concentrado",
+      "controlled": true,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": -52.8
+    },
+    {
+      "mode": "classico",
+      "strategy": "conectividade",
+      "controlled": false,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": -33.7
+    },
+    {
+      "mode": "classico",
+      "strategy": "discreto",
+      "controlled": false,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": -10.3
+    },
+    {
+      "mode": "classico",
+      "strategy": "ruptura",
+      "controlled": false,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": -21.2
+    },
+    {
+      "mode": "classico",
+      "strategy": "adaptativo",
+      "controlled": true,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": -38.8
+    },
+    {
+      "mode": "exploracao",
+      "strategy": "observador",
+      "controlled": false,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": 16.9
+    },
+    {
+      "mode": "exploracao",
+      "strategy": "concentrado",
+      "controlled": true,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": -47.8
+    },
+    {
+      "mode": "exploracao",
+      "strategy": "conectividade",
+      "controlled": false,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": -29.9
+    },
+    {
+      "mode": "exploracao",
+      "strategy": "discreto",
+      "controlled": false,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": -9
+    },
+    {
+      "mode": "exploracao",
+      "strategy": "ruptura",
+      "controlled": false,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": -20.7
+    },
+    {
+      "mode": "exploracao",
+      "strategy": "adaptativo",
+      "controlled": true,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": -35
+    },
+    {
+      "mode": "equilibrado",
+      "strategy": "observador",
+      "controlled": false,
+      "deltaVitPlayerPct": -41.6,
+      "deltaDays": 14.1
+    },
+    {
+      "mode": "equilibrado",
+      "strategy": "concentrado",
+      "controlled": true,
+      "deltaVitPlayerPct": 4.2,
+      "deltaDays": -52.6
+    },
+    {
+      "mode": "equilibrado",
+      "strategy": "conectividade",
+      "controlled": false,
+      "deltaVitPlayerPct": 4.2,
+      "deltaDays": -33.5
+    },
+    {
+      "mode": "equilibrado",
+      "strategy": "discreto",
+      "controlled": false,
+      "deltaVitPlayerPct": 4.2,
+      "deltaDays": -10.1
+    },
+    {
+      "mode": "equilibrado",
+      "strategy": "ruptura",
+      "controlled": false,
+      "deltaVitPlayerPct": 0,
+      "deltaDays": -21.1
+    },
+    {
+      "mode": "equilibrado",
+      "strategy": "adaptativo",
+      "controlled": true,
+      "deltaVitPlayerPct": 4.2,
+      "deltaDays": -38.6
+    },
+    {
+      "mode": "desafio",
+      "strategy": "observador",
+      "controlled": false,
+      "deltaVitPlayerPct": -37.5,
+      "deltaDays": 6.5
+    },
+    {
+      "mode": "desafio",
+      "strategy": "concentrado",
+      "controlled": true,
+      "deltaVitPlayerPct": 33.3,
+      "deltaDays": -53.3
+    },
+    {
+      "mode": "desafio",
+      "strategy": "conectividade",
+      "controlled": false,
+      "deltaVitPlayerPct": 33.3,
+      "deltaDays": -33.8
+    },
+    {
+      "mode": "desafio",
+      "strategy": "discreto",
+      "controlled": false,
+      "deltaVitPlayerPct": 14.6,
+      "deltaDays": -8.7
+    },
+    {
+      "mode": "desafio",
+      "strategy": "ruptura",
+      "controlled": false,
+      "deltaVitPlayerPct": -12.5,
+      "deltaDays": -22.5
+    },
+    {
+      "mode": "desafio",
+      "strategy": "adaptativo",
+      "controlled": true,
+      "deltaVitPlayerPct": 33.3,
+      "deltaDays": -39.1
+    }
+  ],
+  "botDescriptions": {
+    "observador": "Linha de base sem compras; os pontos permanecem guardados.",
+    "economizador": "Mesmos atributos do Concentrado, mas sem gastar pontos; isola o impacto das compras.",
+    "concentrado": "Foco em expansão interna e reforço do território ativo.",
+    "conectividade": "Foco em conexões e avanço de novos territórios.",
+    "discreto": "Foco em resistência e pressão governamental.",
+    "ruptura": "Troca maior pressão científica por crescimento agressivo.",
+    "adaptativo": "Prioriza conexão cedo e muda a decisão conforme a corrida científica."
+  }
+}
