@@ -1,6 +1,43 @@
-# Project Zero — Primeira Experiência do Jogador (Alpha v0.8.0)
+# Project Zero — Auditoria de Balanceamento (Alpha v0.9.0)
 
 Jogo de estratégia global em React, Vite e TypeScript, com mapa 2D, laboratório, governos autônomos, acontecimentos causais, relatório final e repartidas. Toda a simulação é **fictícia**: os indicadores de propagação são mecânicas abstratas de jogo, não modelos epidemiológicos.
+
+## v0.9 — Balanceamento com bots reproduzíveis
+
+A v0.9 introduz **auditoria de balanceamento**, não mudanças de coeficientes. As regras do jogo, as mecânicas de compra e o formato dos saves v6 **são idênticos à v0.8**. Isso protege partidas existentes e permite comparar benchmarks com controle real.
+
+- **7 políticas determinísticas** (`Observador`, `Economizador`, `Concentrado`, `Conectividade`, `Discreto`, `Ruptura`, `Adaptativo`) fazem compras e aplicam táticas usando apenas as funções oficiais do motor.
+- **1.344 partidas** (16 seeds × 3 países × 7 políticas × 4 modos). Os mesmos países e seeds são usados em todos os perfis.
+- **Controle pareado:** `Economizador` não gasta pontos; `Concentrado` e `Adaptativo` usam os mesmos atributos iniciais e diferem apenas por compras e operações. Outros perfis usam atributos diferentes, logo suas comparações **não isolam** o efeito das compras.
+- Os bots respeitam saldo, requisitos de melhorias, alvos válidos e fase da partida. Táticas são limitadas a cinco por checkpoint de 10 dias; compras têm prioridade e aguardam acumular pontos antes de gastar em táticas.
+- **Relatório offline:** [reports/balanceamento-v09.html](reports/balanceamento-v09.html), com tabela, indicadores e comparação pareada; [JSON](reports/benchmark-bots.json) para auditorias.
+
+### Resultados da amostra de bots (Desafio)
+
+| Bot | Vitórias do jogador | Dias médios | Nota |
+|---|---:|---:|---|
+| Observador | 29,2% | 158,4 | Sem gastos, atributos padrão |
+| Economizador | 66,7% | 151,9 | Controle com atributos de Concentrado |
+| Concentrado | 100% | 98,6 | Compra e usa Impulso local |
+| Conectividade | 100% | 118,1 | Compras e Impulso local |
+| Discreto | 81,3% | 143,2 | Melhorias e pressão institucional |
+| Ruptura | 54,2% | 129,4 | Expansão forte, contrapartida científica |
+| Adaptativo | 100% | 112,8 | Compras, adapta ação ao indicador de pesquisa |
+
+**Diagnóstico:** algumas combinações de evolução dominam o modo Desafio; mudar somente custo/efeito do Impulso não eliminou esse domínio em um ensaio inicial. Portanto nenhum rebalanceamento foi integrado sem teste de regressão das regras e saves. Estes resultados não representam probabilidades de vitória de pessoas reais.
+
+```bash
+npm run test:engine      # 37 testes legados
+npm run test:bots        # 6 testes novos
+npm run benchmark        # 576 partidas sem gastos (compatibilidade)
+npm run benchmark:bots   # 1.344 partidas com políticas de compras e táticas
+npm run report:balance   # regenera HTML e JSON offline
+npm run build            # validação React/Vite no Debian com dependências existentes
+```
+
+**Arquitetura:** `scripts/strategy-bots.mjs` executa ações oficiais do motor; `scripts/benchmark-bots.mjs` orquestra partidas; `scripts/build-balance-report.mjs` gera o painel sem internet. Bots e relatório **não são recursos executados durante uma partida humana**. Nenhum backend, banco, telemetria ou bibliotecas extras.
+
+---
 
 ## Executar no Debian
 

@@ -139,7 +139,7 @@ export default function App() {
   return <div className="app">
     <header className="topbar">
       <div className="brand"><div className="brand-mark"><Icon name="globe"/></div><div className="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div>
-      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.8.0</span></span></div>
+      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.9.0</span></span></div>
       <div className="topright"><button type="button" className="help-button" onClick={()=>{setPlaying(false);setTourOpen(true);}} aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span className="server-dot"/><span>SIMULAÇÃO LOCAL</span><span className="top-date">SEED #{game.seed}</span></div>
     </header>
 
@@ -230,7 +230,7 @@ export default function App() {
           <div className="model-note"><div className="model-title">MODELO DE MUNDO</div><p>Os 18 territórios são conectados por uma malha abstrata. Clique no mapa para inspecionar cada país.</p><div className="model-stat">18 <span>NAÇÕES</span> <span className="slash">/</span> 01 <span>CENÁRIO</span></div></div>
         </aside>
       </div>
-      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.8.0 — EXPERIÊNCIA DO JOGADOR</span></footer>
+      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.9.0 — AUDITORIA DE BALANCEAMENTO</span></footer>
     </div>
     {tourOpen&&<Onboarding onClose={closeTour} onLaboratory={openLab}/>}
     {outcomeOpen&&ended&&<GameOutcome game={game} previous={previousRun} onClose={()=>setOutcomeOpen(false)} onRepeat={repeat} onNew={newAfterOutcome}/>}
