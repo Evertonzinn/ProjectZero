@@ -44,7 +44,7 @@ import { adjustAttribute, availableUpgrade, buyUpgrade, getLabModifiers, restore
 
 test('pontos iniciais são limitados a oito e atributos travam após iniciar', () => {
   let g=createGame('BRA',3);
-  assert.equal(g.version,6);
+  assert.equal(g.version,7);
   assert.equal(g.agent.attributes.propagacao,2);
   g=adjustAttribute(g,'propagacao',1);
   g=adjustAttribute(g,'resistencia',1);
@@ -101,7 +101,7 @@ test('save versão 1 é migrado mantendo mapa, dia e seed',()=>{
   const legacy={...old,version:1,countries:Object.fromEntries(Object.entries(old.countries).map(([id,{government,...c}])=>[id,c]))};
   const restored=restoreGame(legacy);
   assert.ok(restored);
-  assert.equal(restored.version,6);
+  assert.equal(restored.version,7);
   assert.equal(restored.day,21);
   assert.equal(restored.seed,84);
   for(const c of COUNTRIES){
@@ -166,10 +166,10 @@ test('salvamento v2 migra para v3 sem perder laboratório, pesquisa e seed',()=>
   const legacy={...g,version:2,agent:{name:g.agent.name,attributes:g.agent.attributes,points:g.agent.points,purchased:g.agent.purchased},countries:Object.fromEntries(Object.entries(g.countries).map(([id,{government,...c}])=>[id,c]))};
   const migrated=restoreGame(legacy);
   assert.ok(migrated);
-  assert.equal(migrated.version,6);
+  assert.equal(migrated.version,7);
   assert.equal(migrated.day,23);
   assert.equal(migrated.seed,12345);
-  assert.deepEqual(migrated.agent,g.agent);
+  assert.deepEqual({...migrated.agent,tacticUses:undefined},{...g.agent,tacticUses:undefined});
   assert.equal(migrated.countries.BRA.research,legacy.countries.BRA.research);
   assert.equal(isGameState(migrated),true);
   assert.equal(restoreGame({...legacy,agent:{...legacy.agent,points:99}}),null);
@@ -236,7 +236,7 @@ test('save v3 é migrado para v4 sem perder governos e pesquisas',()=>{
   const old={...legacyState,version:3};
   const restored=restoreGame(old);
   assert.ok(restored);
-  assert.equal(restored.version,6);
+  assert.equal(restored.version,7);
   assert.equal(restored.seed,g.seed);
   assert.equal(restored.day,g.day);
   assert.deepEqual(restored.countries,g.countries);
@@ -293,7 +293,7 @@ test('repetição preserva seed, país e atributos mas limpa progressão',()=>{
   for(let i=0;i<32&&game.phase==='running';i++)game=advanceDay(game);
   game=buyUpgrade(game,'correntes');
   const repeated=repeatSeed(game);
-  assert.equal(repeated.version,6);
+  assert.equal(repeated.version,7);
   assert.equal(repeated.phase,'setup');
   assert.equal(repeated.seed,9983);
   assert.equal(repeated.origin,'JPN');
@@ -370,7 +370,7 @@ test('save v4 migra para v5 com mesmo saldo e eventos; replays zeram gastos',()=
  const legacy={...g,version:4,agent};
  const restored=restoreGame(legacy);
  assert.ok(restored);
- assert.equal(restored.version,6);
+ assert.equal(restored.version,7);
  assert.equal(restored.agent.spentTactics,0);
  assert.deepEqual(restored.globalEvents,g.globalEvents);
  assert.equal(isGameState(restored),true);
@@ -386,7 +386,7 @@ test('v0.7 inicia no modo equilibrado e bloqueia alterações após começar', (
   const initial=createGame('BRA',12345);
   assert.equal(initial.mode,DEFAULT_MODE);
   assert.equal(initial.mode,'equilibrado');
-  assert.equal(initial.version,6);
+  assert.equal(initial.version,7);
   const changed=changeMode(initial,'desafio');
   assert.equal(changed.mode,'desafio');
   assert.equal(initial.mode,'equilibrado');
@@ -398,13 +398,13 @@ test('v0.7 inicia no modo equilibrado e bloqueia alterações após começar', (
 });
 
 test('save versão 5 é migrado para Clássico, sem mudar a simulação de uma partida em andamento', () => {
-  let current=startGame(createGame('BRA',874,'classico'));
+  let current=startGame(createGame('BRA',874,'classico','legado'));
   for(let i=0;i<73;i++)current=advanceDay(current);
-  const {mode,...original}=current;
+  const {mode,ruleset,...original}=current;
   const legacy={...original,version:5};
   const migrated=restoreGame(legacy);
   assert.ok(migrated);
-  assert.equal(migrated.version,6);
+  assert.equal(migrated.version,7);
   assert.equal(migrated.mode,'classico');
   assert.deepEqual(migrated.countries,current.countries);
   assert.deepEqual(advanceDay(migrated),advanceDay(current));
@@ -421,8 +421,8 @@ test('os modos expõem objetivos estáveis e saves com modo inválido são rejei
 });
 
 test('a mesma seed e origem podem produzir desfechos opostos com escolhas diferentes', () => {
-  let neutral=createGame('BRA',42,'equilibrado');
-  let faster=createGame('BRA',42,'equilibrado');
+  let neutral=createGame('BRA',42,'equilibrado','legado');
+  let faster=createGame('BRA',42,'equilibrado','legado');
   faster=adjustAttribute(faster,'propagacao',1);
   faster=adjustAttribute(faster,'instabilidade',1);
   neutral=startGame(neutral); faster=startGame(faster);
@@ -460,4 +460,112 @@ test('a amostra de balanceamento produz vitórias e derrotas no modo equilibrado
   }
   assert.ok(results.has('contained'));
   assert.ok(results.has('overwhelmed'));
+});
+
+import { TUTORIAL_STEPS, getGuidance, upgradeFeedback, tacticFeedback } from '../.engine-build/engine/guide.js';
+
+test('guia tem quatro etapas estáveis e instruções sobre saldo inicial e evolução', () => {
+  assert.equal(TUTORIAL_STEPS.length,4);
+  assert.match(TUTORIAL_STEPS[1].text,/8 pontos/);
+  assert.match(TUTORIAL_STEPS[2].text,/10 dias/);
+  assert.equal(new Set(TUTORIAL_STEPS.map(s=>s.caption)).size,4);
+});
+
+test('orientação muda de configuração para evolução conforme o estado real da partida', () => {
+  const original=createGame('BRA',719,'equilibrado');
+  const snap=structuredClone(original);
+  let guide=getGuidance(original,'BRA');
+  assert.equal(guide.action,'lab');
+  assert.match(guide.title,/2 pontos iniciais/);
+  assert.deepEqual(original,snap);
+  let prepared=adjustAttribute(original,'resistencia',1);
+  prepared=adjustAttribute(prepared,'instabilidade',1);
+  guide=getGuidance(prepared,'BRA');
+  assert.equal(guide.action,'start');
+  let running=startGame(prepared);
+  for(let i=0;i<10;i++)running=advanceDay(running);
+  assert.equal(running.day,10);
+  guide=getGuidance(running,'BRA');
+  assert.equal(guide.action,'lab');
+  assert.match(guide.title,/2 pontos de evolução/);
+  const purchased=upgradeFeedback(running,'correntes');
+  assert.ok(purchased?.includes('−2 PT'));
+  assert.equal(upgradeFeedback(buyUpgrade(running,'correntes'),'correntes'),null);
+});
+
+test('feedback de ação tática deriva dos estados antes e depois, não altera saves', () => {
+  let g=startGame(createGame('BRA',1024,'equilibrado'));
+  for(let i=0;i<20;i++)g=advanceDay(g);
+  const old=structuredClone(g);
+  const next=applyTactic(g,'friccao','BRA');
+  const feedback=tacticFeedback(g,next,'friccao','BRA');
+  assert.ok(feedback?.includes('−3 PT'));
+  assert.ok(feedback?.includes('Estabilidade'));
+  assert.deepEqual(g,old);
+  assert.equal(tacticFeedback(g,g,'friccao','BRA'),null);
+  assert.equal(isGameState(next),true);
+});
+
+import {getTacticCost, applyTactic as tacticalAction} from '../.engine-build/engine/simulation.js';
+
+test('v0.9.1: novas partidas usam regras revisadas, v6 restaura regras antigas intactas',()=>{
+  const newGame=createGame('BRA',42,'desafio');
+  assert.equal(newGame.version,7);
+  assert.equal(newGame.ruleset,'revisado');
+  const old=startGame(createGame('BRA',42,'desafio','legado'));
+  let snapshot=old;
+  for(let i=0;i<40;i++)snapshot=advanceDay(snapshot);
+  const {ruleset,...data}=snapshot;
+  const {tacticUses,...agent}=data.agent;
+  const savedV6={...data,version:6,agent};
+  const migrated=restoreGame(JSON.parse(JSON.stringify(savedV6)));
+  assert.ok(migrated);
+  assert.equal(migrated.version,7);
+  assert.equal(migrated.ruleset,'legado');
+  assert.deepEqual(migrated.agent.tacticUses,{pulso:0,friccao:0});
+  let continuedOriginal=snapshot,continuedMigrated=migrated;
+  for(let i=0;i<65;i++){continuedOriginal=advanceDay(continuedOriginal);continuedMigrated=advanceDay(continuedMigrated);}
+  assert.deepEqual(continuedOriginal.countries,continuedMigrated.countries);
+  assert.equal(continuedOriginal.day,continuedMigrated.day);
+  assert.equal(continuedOriginal.phase,continuedMigrated.phase);
+  assert.equal(restoreGame({...savedV6,mode:'inválido'}),null);
+});
+
+test('v0.9.1: custo progressivo contabilizado e saves adulterados rejeitados',()=>{
+  let game=startGame(createGame('BRA',83));
+  for(let day=0;day<40;day++)game=advanceDay(game);
+  assert.equal(game.agent.points,8);
+  assert.equal(getTacticCost(game,'pulso'),2);
+  for(const price of [2,2,4]){
+    const previous=game;
+    game=tacticalAction(game,'pulso','BRA');
+    assert.equal(previous.agent.points-game.agent.points,price);
+    assert.equal(isGameState(game),true);
+  }
+  assert.equal(game.agent.spentTactics,8);
+  assert.equal(game.agent.tacticUses.pulso,3);
+  assert.equal(getTacticCost(game,'pulso'),4);
+  assert.equal(restoreGame(JSON.parse(JSON.stringify(game))).agent.spentTactics,8);
+  assert.equal(isGameState({...game,agent:{...game.agent,tacticUses:{pulso:2,friccao:0}}}),false);
+  assert.equal(isGameState({...game,agent:{...game.agent,spentTactics:6,points:2}}),false);
+  assert.equal(tacticalAction(game,'pulso','BRA'),game);
+});
+
+test('v0.9.1: contrapartida de pesquisa é específica do conjunto revisado',async()=>{
+  let revised=startGame(createGame('BRA',1234));
+  let legacy=startGame(createGame('BRA',1234,'equilibrado','legado'));
+  for(let day=0;day<10;day++){revised=advanceDay(revised);legacy=advanceDay(legacy);}
+  const priorResearch=getLabModifiers(revised).scienceFactor;
+  revised=buyUpgrade(revised,'correntes');
+  legacy=buyUpgrade(legacy,'correntes');
+  assert.ok(getLabModifiers(revised).scienceFactor>priorResearch);
+  assert.equal(getLabModifiers(legacy).scienceFactor,1+(legacy.agent.attributes.instabilidade-2)*.055);
+  const {summarizeRun,repeatSeed,comparableRuns}=await import('../.engine-build/engine/outcome.js');
+  while(revised.phase==='running')revised=advanceDay(revised);
+  const summary=summarizeRun(revised);
+  assert.ok(summary);
+  assert.equal(summary.ruleset,'revisado');
+  assert.equal(repeatSeed(revised).ruleset,'revisado');
+  assert.equal(comparableRuns(summary,{...summary,ruleset:'legado'}),false);
+  assert.equal(repeatSeed(legacy).ruleset,'legado');
 });

@@ -11,25 +11,31 @@ events=(root/'.engine-build/engine/events.js').read_text().replace('export ','')
 tactics=(root/'.engine-build/engine/tactics.js').read_text().replace('export ','')
 balance=(root/'.engine-build/engine/balance.js').read_text().replace('export ','')
 outcome=(root/'.engine-build/engine/outcome.js').read_text().replace('export ','')
+guide=(root/'.engine-build/engine/guide.js').read_text().replace('export ','')
+persistence=(root/'.engine-build/engine/persistence.js').read_text().replace('export ','')
+immersion=(root/'.engine-build/engine/immersion.js').read_text().replace('export ','')
+immersion=re.sub(r'^import .*?;\n','',immersion,flags=re.M)
+persistence=re.sub(r'^import .*?;\n','',persistence,flags=re.M)
+guide=re.sub(r'^import .*?;\n','',guide,flags=re.M)
 outcome=re.sub(r'^import .*?;\n','',outcome,flags=re.M)
 engine=re.sub(r'^import .*?;\n','',engine,flags=re.M)
 engine=engine.replace('export ','')
 countries=countries.replace('export ','')
 world=(root/'src/data/world.json').read_text()
 html=r'''<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d16"><title>Project Zero — Balanceamento Estratégico (prévia offline)</title>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d16"><title>Project Zero — Imersão e Acabamento (prévia offline)</title>
 <style>%%CSS%%
 .preview-hint{padding:10px 16px;margin-bottom:15px;border:1px solid #395044;color:#d7eaaa;background:#13201b;font-size:11px;line-height:1.5}.preview-hint b{color:#dfff95}.map-overlay{position:absolute;left:16px;bottom:16px;width:290px;max-width:70%;pointer-events:none;border:1px solid #485c45;background:#12202be8;padding:14px;display:grid;gap:6px}.map-overlay>small{font-size:10px;font-weight:750;color:#bfe77e;letter-spacing:1px}.map-overlay>strong{font-size:15px;color:#ecf6eb}.map-overlay>span{font-size:10px;color:#9db3b6}.map-viewport{height:clamp(350px,38vw,570px)}.preview-status{font-size:10px;color:#96adac}.preview-status strong{color:#c8eca3}.country-playable{cursor:pointer}.map-svg-tooltip{position:absolute;top:16px;left:16px;border:1px solid #3b5647;color:#e2f5d7;background:#182b32dd;padding:8px 12px;font-size:12px;font-weight:700;display:none}.radar-btn{height:35px;background:#132332;color:#badab4;border:1px solid #365040;padding:0 12px;font-size:10px;font-weight:750}.radar-btn:hover{background:#284139}.country-metrics{display:grid;gap:12px}.region-box{display:flex;flex-direction:column;gap:6px;border-bottom:1px solid #263845;padding-bottom:12px}.region-box>span{font-size:9px;color:#829aa9;letter-spacing:1px;font-weight:720}.region-box>strong{font-size:21px;color:#ebf5ef}.region-box>strong.hot{color:#f5a487}.attr{margin:10px 0}.attr header{display:flex;justify-content:space-between;color:#a8bdc2;font-size:10px;font-weight:720}.bar-bg{margin-top:7px;height:5px;background:#263946}.bar-progress{height:100%;background:#bce77a}.nation-title{font-size:21px;color:#f0f8f3;margin:7px 0 17px}.nation-title span{font-size:25px}.empty-news{min-height:60px}.chart-container{min-height:160px}.trend-svg{height:145px}.playback-title{display:flex}.news-list{max-height:185px}.quick-panel>button{font-size:12px}.status-summary{margin-bottom:10px;display:flex;justify-content:space-between;color:#97adb4;font-size:10px}.status-summary b{color:#b9e984}.scenario-panel .field-wrap{margin-bottom:13px}.country-attrs{display:block}.right-sidebar .panel-heading{padding:0 14px}@media(max-width:1080px){.right-sidebar .country-panel{display:block}.right-sidebar .country-attrs{display:block}}@media(max-width:730px){.page-body{padding-top:12px}.preview-hint{font-size:10px}.map-viewport{height:215px}.map-overlay{max-width:55%;padding:7px;bottom:7px;left:7px}.map-overlay>strong{font-size:11px}.map-overlay>span{display:none}.playback-title{display:flex}}
 </style></head>
-<body><div class="app"><header class="topbar"><div class="brand"><div class="brand-mark">◎</div><div class="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div><div class="topcenter"><span class="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span class="header-separator"></span><span class="build-label">ALPHA <span>0.7.0</span></span></div><div class="topright"><span class="server-dot"></span>EXECUÇÃO LOCAL</div></header>
+<body><div class="app immersion-root effects-on" id="previewApp"><header class="topbar"><div class="brand"><div class="brand-mark">◎</div><div class="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div><div class="topcenter"><span class="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span class="header-separator"></span><span class="build-label">ALPHA <span>0.11.0</span></span></div><div class="topright"><div class="immersion-settings" role="group" aria-label="Preferências de imersão"><button type="button" id="soundToggle" class="immersion-toggle" aria-pressed="false" title="Alternar efeitos sonoros">♪ SOM OFF</button><button type="button" id="motionToggle" class="immersion-toggle" aria-pressed="true" title="Alternar animações">✦ EFEITOS ON</button></div><button type="button" id="helpBtn" class="help-button" aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span class="server-dot"></span><span class="preview-local-status">EXECUÇÃO LOCAL</span></div></header>
 <div class="page-body"><div class="preview-hint"><b>PRÉVIA INTERATIVA OFFLINE</b> — Clique em um país, escolha a origem e pressione INICIAR. Este arquivo funciona sem internet, sem servidor e sem npm. Governos decidem de forma autônoma; acompanhe as crises, a corrida científica e os acontecimentos com causas e efeitos persistentes. O projeto React/TypeScript está no ZIP.</div>
 <div class="eyebrow-row"><span>PAINEL DE OPERAÇÕES <b>/</b> MAPA GLOBAL</span><span class="scenario-id">CENÁRIO <b>ZERO / 001</b></span></div>
 <section class="headline"><div><h1>O mundo é seu tabuleiro<span class="headline-dot">.</span></h1><p>Dezoito nações, reações globais e consequências em cadeia.</p></div><div class="day-highlight"><span>DIA</span><strong id="headingDay">000</strong><div class="status-meta" id="headingStatus">AGUARDANDO</div></div></section>
 <section class="kpi-row"><div class="kpi"><div class="kpi-heading"><span>POPULAÇÃO SIMULADA</span><span class="kpi-symbol">◈</span></div><strong id="kpiPopulation">—</strong><span class="kpi-foot">18 PAÍSES</span></div><div class="kpi"><div class="kpi-heading"><span>POPULAÇÃO IMPACTADA</span><span class="kpi-symbol orange">◉</span></div><strong id="kpiAffected">0</strong><span class="kpi-foot" id="kpiPct">0% DA POPULAÇÃO</span></div><div class="kpi"><div class="kpi-heading"><span>PAÍSES EM CRISE</span><span class="kpi-symbol blue">◎</span></div><strong id="kpiCountries">00 / 18</strong><span class="kpi-foot">REGIÕES MONITORADAS</span></div><div class="kpi"><div class="kpi-heading"><span>RESPOSTA CIENTÍFICA</span><span class="kpi-symbol green">⬡</span></div><strong id="kpiScience">0%</strong><div class="bar-track"><div class="bar-fill" id="scienceBar" style="width:0%"></div></div></div></section>
-<div class="workspace"><aside class="sidebar left-sidebar"><div class="panel-heading"><span class="heading-square"></span> CONTROLE DO CENÁRIO <span class="panel-number">01</span></div><div class="scenario-panel"><div class="small-label">PROTOCOLO ATUAL</div><div class="scenario-badge"><span class="tiny-glow"></span> ZERO — SIMULAÇÃO</div><p>Defina o território onde o evento fictício começa e acompanhe as consequências.</p><div class="fine-divider"></div><div class="small-label">PAÍS DE ORIGEM</div><label class="field-wrap"><span class="flag" id="selectFlag">🇧🇷</span><select id="originSelect" aria-label="Escolher país de origem"></select><span class="field-chevron">⌄</span></label><div class="small-label">MODO DE JOGO</div><label class="field-wrap mode-field"><select id="modeSelect" aria-label="Dificuldade do cenário"></select><span class="field-chevron">⌄</span></label><p class="mode-hint" id="modeHint"></p><div class="seed-row"><span>SEED DO CENÁRIO</span><span id="seedLabel">—</span></div><button id="openLabBtn" type="button" class="lab-launch"><span class="lab-launch-icon">⬡</span><span><strong>LABORATÓRIO ZERO</strong><small id="labLaunchDetail">PROTOCOLO ZERO · 0 MELHORIAS</small></span><span class="lab-launch-arrow">↗</span></button><button id="labAlert" type="button" class="lab-alert lab-alert-button" style="display:none"></button><button id="startBtn" class="primary-btn" type="button">▶ &nbsp; INICIAR SIMULAÇÃO ↗</button><div id="gameEnd" class="outcome-box" style="display:none"></div></div>
-<div class="panel-heading secondary"><span class="heading-square"></span> CONTROLES RÁPIDOS <span class="panel-number">02</span></div><div class="quick-panel"><button type="button" id="saveBtn">◫ &nbsp; Salvar partida</button><button type="button" id="loadBtn">⇧ &nbsp; Carregar partida</button><button type="button" id="resetBtn">↺ &nbsp; Reiniciar cenário</button></div><div class="sidebar-note"><span class="note-mark">!</span><p>Parâmetros abstratos de gameplay. Sem representação de epidemiologia real.</p></div></aside>
+<div class="workspace"><aside class="sidebar left-sidebar"><div class="panel-heading"><span class="heading-square"></span> CONTROLE DO CENÁRIO <span class="panel-number">01</span></div><div class="scenario-panel"><div class="small-label">PROTOCOLO ATUAL</div><div class="scenario-badge"><span class="tiny-glow"></span> ZERO — SIMULAÇÃO</div><p>Defina o território onde o evento fictício começa e acompanhe as consequências.</p><div class="fine-divider"></div><div class="small-label">PAÍS DE ORIGEM</div><label class="field-wrap"><span class="flag" id="selectFlag">🇧🇷</span><select id="originSelect" aria-label="Escolher país de origem"></select><span class="field-chevron">⌄</span></label><div class="small-label">MODO DE JOGO</div><label class="field-wrap mode-field"><select id="modeSelect" aria-label="Dificuldade do cenário"></select><span class="field-chevron">⌄</span></label><p class="mode-hint" id="modeHint"></p><div class="guide-card" id="guideCard" aria-live="polite"><span class="guide-kicker">◈ SEU PRÓXIMO PASSO</span><strong id="guideTitle"></strong><p id="guideDescription"></p><button type="button" id="guideAction"></button></div><div class="seed-row"><span>SEED DO CENÁRIO</span><span id="seedLabel">—</span></div><button id="openLabBtn" type="button" class="lab-launch"><span class="lab-launch-icon">⬡</span><span><strong>LABORATÓRIO ZERO</strong><small id="labLaunchDetail">PROTOCOLO ZERO · 0 MELHORIAS</small></span><span class="lab-launch-arrow">↗</span></button><button id="labAlert" type="button" class="lab-alert lab-alert-button" style="display:none"></button><button id="startBtn" class="primary-btn" type="button">▶ &nbsp; INICIAR SIMULAÇÃO ↗</button><div id="gameEnd" class="outcome-box" style="display:none"></div></div>
+<div class="panel-heading secondary"><span class="heading-square"></span> CONTROLES RÁPIDOS <span class="panel-number">02</span></div><div class="quick-panel"><button type="button" id="saveBtn">◫ &nbsp; Salvar partida</button><button type="button" id="loadBtn">⇧ &nbsp; Carregar partida</button><button type="button" id="recoveryBtn">↶ &nbsp; Recuperar sessão</button><button type="button" id="backupBtn">↶ &nbsp; Recuperar backup</button><button type="button" id="exportBtn">↓ &nbsp; Exportar JSON</button><button type="button" id="importBtn">↑ &nbsp; Importar JSON</button><input type="file" id="importInput" class="file-import-hidden" accept=".json,application/json" aria-label="Importar save JSON"><button type="button" id="resetBtn">↺ &nbsp; Reiniciar cenário</button></div><div class="sidebar-note"><span class="note-mark">!</span><p>Parâmetros abstratos de gameplay. Sem representação de epidemiologia real.</p></div></aside>
 <main class="mainstage"><div class="map-shell"><div class="map-topline"><span class="led-dot"></span> VISUALIZAÇÃO GLOBAL <span class="map-topline-right">18 NAÇÕES · MALHA ABSTRATA</span></div><div class="map-viewport"><svg class="world-svg" id="worldSvg" viewBox="0 0 1600 720" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Mapa interativo do mundo; clique em um dos 18 países destacados"></svg><div class="map-controls"><button type="button" id="zoomIn" title="Zoom +">+</button><button type="button" id="zoomOut" title="Zoom −">−</button><button type="button" id="zoomReset" title="Centralizar">⌖</button></div><div class="map-coordinate" id="zoomLabel">ZOOM 1× · ARRASTE PARA EXPLORAR</div><div class="map-svg-tooltip" id="hoverLabel"></div><div class="map-overlay" id="mapOverlay"><small>01 / ESCOLHA A ORIGEM</small><strong>Clique em um país para começar</strong><span>Depois inicie no painel lateral.</span></div></div><div class="map-footer"><div class="map-legend"><span class="legend-dot base"></span> Inativo <span class="legend-dot low"></span> Inicial <span class="legend-dot medium"></span> Expansão <span class="legend-dot high"></span> Elevado</div><div class="map-footer-right">VISUALIZAÇÃO FICTÍCIA</div></div></div>
-<div class="playback"><div class="playback-title"><span>CONTROLE TEMPORAL</span><strong id="timeLabel">DIA 000</strong></div><div class="playback-buttons"><button type="button" id="openLabQuick" class="lab-quick">⬡ LABORATÓRIO</button><button type="button" class="round-play" id="playBtn" aria-label="Pausar ou continuar">▶</button><button type="button" class="step-btn" id="stepBtn">⏭ &nbsp; PRÓXIMO DIA</button><span class="playback-separator"></span><span class="speed-caption">VELOCIDADE</span><div class="speed-group" id="speedGroup"><button type="button" data-speed="1" class="active">1×</button><button type="button" data-speed="5">5×</button><button type="button" data-speed="20">20×</button></div></div><div class="notification" id="notice" role="status" style="display:none"></div></div>
+<div class="playback"><div class="playback-title"><span>CONTROLE TEMPORAL</span><strong id="timeLabel">DIA 000</strong></div><div class="playback-buttons"><button type="button" id="openLabQuick" class="lab-quick">⬡ LABORATÓRIO</button><button type="button" class="round-play" id="playBtn" aria-label="Pausar ou continuar">▶</button><button type="button" class="step-btn" id="stepBtn">⏭ &nbsp; PRÓXIMO DIA</button><span class="playback-separator"></span><span class="speed-caption">VELOCIDADE</span><div class="speed-group" id="speedGroup"><button type="button" data-speed="1" class="active">1×</button><button type="button" data-speed="5">5×</button><button type="button" data-speed="20">20×</button></div></div><div class="notification" id="notice" role="status" style="display:none"></div><div class="immersion-moment" id="momentBanner" role="status" aria-live="polite" style="display:none"></div></div>
 <div class="bottom-panels"><div class="trend-shell chart-container"><div class="trend-heading"><span>EVOLUÇÃO DO CENÁRIO</span><span id="trendCaption">00 DIAS</span></div><svg id="trendSvg" class="trend-svg" viewBox="0 0 700 120" preserveAspectRatio="none" role="img" aria-label="Evolução da crise no período"></svg></div><div class="news-shell"><div class="news-header"><span>BOLETIM GLOBAL</span><span id="newsCount" class="news-total">0 EVENTOS</span></div><div class="news-tabs" id="newsTabs"><button type="button" data-tab="all" class="active">TODOS</button><button type="button" data-tab="alerta">ALERTAS</button><button type="button" data-tab="pesquisa">CIÊNCIA</button><button type="button" data-tab="evento">EVENTOS</button></div><div class="news-list" id="newsList"></div></div></div>
 <section class="intel-shell"><header class="intel-heading"><div><span class="intel-kicker">MÓDULO 03 / WORLD INTELLIGENCE</span><h2>Corrida científica <em>&amp; diplomacia</em></h2><p>Dezoito governos autônomos. Estratégias, decisões e custos observáveis.</p></div><span class="intel-live">● &nbsp; ANÁLISE ATIVA</span></header>
 <div class="intel-summary"><div><small>LÍDER ATUAL</small><strong id="intelLeader">—</strong></div><div><small>CANAIS DE COOPERAÇÃO</small><strong id="intelCoop">00</strong></div><div><small>GOVERNOS MOBILIZADOS</small><strong id="intelMobilized">00</strong></div></div>
@@ -40,8 +46,14 @@ html=r'''<!doctype html>
 <div id="eventsList" class="events-timeline"></div><footer class="events-footer">Impactos permanentes ficam no país. Modificadores temporários expiram automaticamente.</footer>
 </section></main>
 <aside class="sidebar right-sidebar"><div class="panel-heading"><span class="heading-square"></span> INTELIGÊNCIA REGIONAL <span class="panel-number">03</span></div><div class="country-panel"><div class="small-label">TERRITÓRIO SELECIONADO</div><h2 class="nation-title" id="nationTitle">—</h2><div id="nationDetail"></div></div><div class="model-note"><div class="model-title">MODELO DE MUNDO</div><p>Os 18 países estão ligados por uma rede ficcional. Selecione um para ver seu perfil e sua resposta.</p><div class="model-stat">18 <span>NAÇÕES</span><span class="slash">/</span> 01 <span>CENÁRIO</span></div></div></aside></div>
-<footer class="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO FICTÍCIA · SEM VALOR PREDITIVO</span><span>V0.6.0 — ECONOMIA DE EVOLUÇÃO</span></footer></div></div>
+<footer class="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO FICTÍCIA · SEM VALOR PREDITIVO</span><span>V0.11 — IMERSÃO E ACABAMENTO</span></footer></div></div>
 
+<div class="tour-backdrop" id="tourBackdrop" style="display:none" aria-hidden="true">
+<section class="tour-modal" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-description" id="tourModal">
+<div class="tour-top"><span>PROJECT ZERO / GUIA DO COMANDANTE</span><button id="tourClose" type="button" aria-label="Fechar tutorial">✕</button></div>
+<div class="tour-content"><span class="tour-eyebrow" id="tourCaption"></span><h2 id="tour-title"></h2><p id="tour-description"></p><div class="tour-progress" id="tourProgress"></div><div class="tour-counter" id="tourCounter"></div></div>
+<div class="tour-actions"><button type="button" class="tour-secondary" id="tourSkip">PULAR GUIA</button><button type="button" class="tour-secondary" id="tourBack">VOLTAR</button><button type="button" class="tour-primary" id="tourNext">PRÓXIMO PASSO →</button></div>
+</section></div>
 <div id="labBackdrop" class="lab-backdrop" style="display:none" aria-hidden="true">
 <section class="lab-modal" role="dialog" aria-modal="true" aria-labelledby="labTitle">
 <header class="lab-header"><div class="lab-heading"><div class="lab-glyph">⬡</div><div><span class="lab-eyebrow">PROJECT ZERO / MÓDULO 02</span><h2 id="labTitle">Laboratório <em>Zero</em></h2><p>Configure seu protocolo e escolha como o cenário evolui.</p></div></div><button class="lab-close" id="labClose" type="button" aria-label="Fechar laboratório">✕</button></header>
@@ -50,7 +62,7 @@ html=r'''<!doctype html>
 <div class="lab-budget"><div><span>ORÇAMENTO INICIAL</span><strong id="labFree">2<small> / 8 livres</small></strong></div><div class="lab-budget-meter" id="labBudgetMeter"></div></div>
 <div class="lab-attributes" id="labAttributes"></div><div class="lab-feedback"><span>RESULTADO DOS MODIFICADORES</span><div><span>Expansão</span><b id="labGrowth">—</b></div><div><span>Conexões</span><b id="labNetwork">—</b></div><div><span>Limiar de reação</span><b id="labSignal">—</b></div><div><span>Pesquisa mundial</span><b id="labScience">—</b></div><small>Efeitos passam a valer no próximo dia de simulação.</small></div></div>
 <div class="lab-evolutions"><div class="lab-section-heading"><div><span>02 / EVOLUÇÃO</span><h3>Árvore de melhorias</h3></div><div class="lab-points"><span id="labPointsLabel">PONTOS DISPONÍVEIS</span><strong id="labPoints">00</strong></div></div>
-<div class="lab-callout"><span>◈</span><p id="labNotice">Ganhe 2 pontos a cada 10 dias.</p></div><div class="lab-eligibility" id="labEligibility" aria-live="polite"></div>
+<div class="lab-callout"><span>◈</span><p id="labNotice">Ganhe 2 pontos a cada 10 dias.</p></div><div class="lab-decision-feedback" id="labDecision" role="status" aria-live="polite" style="display:none"></div><div class="lab-eligibility" id="labEligibility" aria-live="polite"></div>
 <div class="lab-upgrades" id="labUpgrades"></div>
 <div class="lab-tactics" aria-label="Ações táticas repetíveis"><div class="lab-tactics-header"><div><span>03 / DECISÕES TÁTICAS</span><h3>Aplicar pontos no mapa</h3></div><span>USOS REPETÍVEIS</span></div>
 <p>As melhorias acima são únicas. Estas operações podem ser utilizadas várias vezes, respeitando o saldo e os limites do país escolhido.</p>
@@ -68,7 +80,10 @@ const worldData=%%WORLD%%;
 %%TACTICS_MODULE%%
 %%BALANCE_MODULE%%
 %%ENGINE%%
+%%PERSISTENCE_MODULE%%
+%%GUIDE_MODULE%%
 %%OUTCOME_MODULE%%
+%%IMMERSION_MODULE%%
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const fmt=n=>new Intl.NumberFormat('pt-BR').format(n);
@@ -78,6 +93,51 @@ const ns='http://www.w3.org/2000/svg';
 let game=createGame('BRA',Math.floor(Date.now()%2000000000));
 let selected='BRA', playing=false, speed=1, timer=null, tab='all', eventFilter='all', zoom=1, center=[800,360], pointer=null, dragging=false, previousRun=null, seenOutcome=null, lastEvolutionPrompt=null;
 const paths=new Map(),nodes=new Map(),links=[];
+let guideAction='lab',decisionMessage='',tourStep=0,tourVisible=false;
+const GUIDE_KEY='project-zero-guide-v08';
+let immersionPrefs={...DEFAULT_IMMERSION};try{immersionPrefs=parsePreferences(window.localStorage.getItem(IMMERSION_KEY));}catch{}
+const mediaMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)');
+let systemReduced=!!mediaMotion?.matches, audioContext=null,lastSound=0,momentTimer=null,previousForMoment=game;
+function syncImmersion(){
+ const moving=effectiveMotion(immersionPrefs.motion,systemReduced);
+ $('previewApp').classList.toggle('effects-off',!moving);
+ $('previewApp').classList.toggle('effects-on',moving);
+ $('soundToggle').textContent=immersionPrefs.sound?'♪ SOM ON':'♪ SOM OFF';
+ $('soundToggle').setAttribute('aria-pressed',String(immersionPrefs.sound));
+ $('motionToggle').textContent=moving?'✦ EFEITOS ON':'✦ EFEITOS OFF';
+ $('motionToggle').setAttribute('aria-pressed',String(moving));
+ $('motionToggle').title=systemReduced?'Movimento reduzido pelo sistema':'Alternar animações';
+}
+function cueSound(kind,gesture=false){
+ if(!immersionPrefs.sound)return;
+ const time=Date.now();if(time-lastSound<180&&!gesture)return;lastSound=time;
+ try {
+  const Constructor=window.AudioContext||window.webkitAudioContext;
+  if(!Constructor)return;
+  if(!audioContext)audioContext=new Constructor();
+  if(audioContext.state==='suspended') {if(!gesture)return;void audioContext.resume().catch(()=>{});}
+  const tones={start:[330,440],upgrade:[440,587,740],tactic:[392,440],alert:[294,220],event:[350,466],evolution:[392,523],victory:[440,554,659],contained:[370,330,262]};
+  const melody=tones[kind]||tones.event, duration=(kind==='victory'||kind==='contained')?.16:.11;
+  melody.forEach((frequency,i)=>{const t=audioContext.currentTime+.012+i*duration*.82,osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type=kind==='alert'?'triangle':'sine';osc.frequency.value=frequency;gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(.038,t+.018);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);osc.connect(gain);gain.connect(audioContext.destination);osc.start(t);osc.stop(t+duration+.01);});
+ }catch{}
+}
+function displayMoment(moment){
+ const el=$('momentBanner');
+ el.className='immersion-moment moment-'+moment.cue;
+ el.replaceChildren();
+ const symbol=document.createElement('span');symbol.className='moment-icon';symbol.textContent=moment.cue==='event'?'◈':'◆';
+ const info=document.createElement('div'),strong=document.createElement('strong'),small=document.createElement('small'),day=document.createElement('span');
+ strong.textContent=moment.title;small.textContent=moment.detail;day.className='moment-day';day.textContent='DIA '+moment.day;
+ info.append(strong,small);el.append(symbol,info,day);el.style.display='flex';
+ if(momentTimer)clearTimeout(momentTimer);
+ momentTimer=setTimeout(()=>{el.style.display='none';},6000);
+ cueSound(moment.cue);
+}
+$('soundToggle').onclick=()=>{immersionPrefs.sound=!immersionPrefs.sound;try{localStorage.setItem(IMMERSION_KEY,JSON.stringify(immersionPrefs));}catch{}syncImmersion();if(immersionPrefs.sound)cueSound('start',true);};
+$('motionToggle').onclick=()=>{immersionPrefs.motion=!immersionPrefs.motion;try{localStorage.setItem(IMMERSION_KEY,JSON.stringify(immersionPrefs));}catch{}syncImmersion();};
+mediaMotion?.addEventListener?.('change',()=>{systemReduced=mediaMotion.matches;syncImmersion();});
+syncImmersion();
+function gameStorage(){try{return window.localStorage;}catch{return {getItem(){throw Error('Sem storage')},setItem(){throw Error('Sem storage')}};}}
 for(const c of COUNTRIES){const option=document.createElement('option');option.value=c.id;option.textContent=c.name;$('originSelect').appendChild(option);}
 for(const mode of ['exploracao','equilibrado','desafio','classico']){const option=document.createElement('option');option.value=mode;option.textContent=MODES[mode].title;$('modeSelect').appendChild(option);}
 function svgEl(tag,props){const el=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(props||{}))el.setAttribute(k,v);return el;}
@@ -106,6 +166,11 @@ function setView(){const w=1600/zoom,h=720/zoom;center=[Math.max(w/2,Math.min(16
 function selectCountry(id){if(!COUNTRY_BY_ID[id])return;selected=id;if(game.phase==='setup')game=changeOrigin(game,id);render();}
 const policies={normal:'Monitoramento',atencao:'Alerta preventivo',restricoes:'Restrições',emergencia:'Emergência'};
 function render(){
+ const moment=deriveMoment(previousForMoment,game);
+ previousForMoment=game;
+ if(moment)displayMoment(moment);
+ else if(momentTimer===null && game.phase==='setup')$('momentBanner').style.display='none';
+ const guide=getGuidance(game,selected); guideAction=guide.action; $('guideCard').className='guide-card guide-'+guide.tone; $('guideTitle').textContent=guide.title;$('guideDescription').textContent=guide.description;$('guideAction').textContent=guide.actionLabel+' ↗';$('guideAction').style.display=guide.action==='none'?'none':'block';
  const stats=getWorldStats(game),country=COUNTRY_BY_ID[selected],s=game.countries[selected],started=game.phase!=='setup',ended=!['setup','running'].includes(game.phase);
  $('kpiPopulation').textContent=pct(stats.population/1e9).replace('%',' bi');$('kpiAffected').textContent=fmt(stats.affected);$('kpiPct').textContent=pct(stats.affectedPct)+' DA POPULAÇÃO';$('kpiCountries').textContent=String(stats.activeCountries).padStart(2,'0')+' / 18';$('kpiScience').textContent=pct(stats.research);$('scienceBar').style.width=stats.research+'%';
  $('headingDay').textContent=String(game.day).padStart(3,'0');$('timeLabel').textContent='DIA '+String(game.day).padStart(3,'0');$('headingStatus').textContent=ended?'ENCERRADO':playing?'EM EXECUÇÃO':started?'PAUSADO':'AGUARDANDO';
@@ -125,8 +190,8 @@ function render(){
 ${s.government.partner?`<div class="gov-partner">↗ CANAL CIENTÍFICO: ${esc(COUNTRY_BY_ID[s.government.partner].name)}</div>`:''}
 ${game.globalEvents.filter(e=>e.countryId===selected && game.day<e.expiresDay).map(e=>`<div class="gov-active-events"><strong>◈ EVENTO ATIVO</strong><span>${esc(e.title)} · até o dia ${e.expiresDay}</span></div>`).join('')}
 <div class="gov-indicators">${[['PRESSÃO SOCIAL',s.government.pressure],['ORÇAMENTO',s.government.budget],['ESTABILIDADE',s.government.stability]].map(([key,val])=>`<div class="gov-metric"><div><span>${key}</span><b>${Math.round(val)}/100</b></div><div class="gov-meter"><i style="width:${val}%"></i></div></div>`).join('')}</div><span class="gov-disclaimer">Parâmetros e reações fictícios, exclusivos deste jogo.</span></div>`;
- for(const c of COUNTRIES){const state=game.countries[c.id],ratio=state.affected/c.population,level=ratio===0?0:ratio<.0005?1:ratio<.01?2:ratio<.075?3:4,p=paths.get(c.id),node=nodes.get(c.id);p.setAttribute('class','country country-playable '+(level?'level-'+level:'')+(selected===c.id?' country-selected':''));node.halo.setAttribute('stroke-opacity',state.affected>0?'.8':'0');node.ring.setAttribute('stroke-opacity',selected===c.id?'1':'0');node.eventRing.setAttribute('stroke-opacity',game.globalEvents.some(e=>e.countryId===c.id&&game.day<e.expiresDay)?'.92':'0');node.dot.setAttribute('fill',state.affected?'#ffa781':selected===c.id?'#c9f98b':'#89bacb');node.dot.setAttribute('r',selected===c.id?'5.6':'3.5');}
- for(const link of links){const active=game.countries[link.from].affected>0&&game.countries[link.to].affected>0;link.path.setAttribute('stroke',active?'#f0a16f':'#608ea8');link.path.setAttribute('stroke-opacity',active?'.55':'.13');}
+ for(const c of COUNTRIES){const state=game.countries[c.id],ratio=state.affected/c.population,level=ratio===0?0:ratio<.0005?1:ratio<.01?2:ratio<.075?3:4,p=paths.get(c.id),node=nodes.get(c.id);p.setAttribute('class','country country-playable '+(level?'level-'+level:'')+(selected===c.id?' country-selected':''));node.halo.setAttribute('stroke-opacity',state.affected>0?'.8':'0');node.ring.setAttribute('stroke-opacity',selected===c.id?'1':'0');node.ring.classList.toggle('selected-halo',selected===c.id);node.eventRing.setAttribute('stroke-opacity',game.globalEvents.some(e=>e.countryId===c.id&&game.day<e.expiresDay)?'.92':'0');node.dot.setAttribute('fill',state.affected?'#ffa781':selected===c.id?'#c9f98b':'#89bacb');node.dot.setAttribute('r',selected===c.id?'5.6':'3.5');}
+ for(const link of links){const active=game.countries[link.from].affected>0&&game.countries[link.to].affected>0;link.path.setAttribute('stroke',active?'#f0a16f':'#608ea8');link.path.setAttribute('stroke-opacity',active?'.55':'.13');link.path.classList.toggle('route-active',active);}
  $('intelLeader').textContent=COUNTRY_BY_ID[stats.leader].flag+' '+COUNTRY_BY_ID[stats.leader].name;
  $('intelCoop').textContent=String(stats.cooperating).padStart(2,'0');
  $('intelMobilized').textContent=String(stats.mobilized).padStart(2,'0');
@@ -153,13 +218,38 @@ function promptEvolution(){
  if(lastEvolutionPrompt===key)return;
  lastEvolutionPrompt=key;playing=false;restartTimer();message('Dia '+game.day+': +2 pontos. Escolha uma melhoria ou ação tática.');toggleLab(true);
 }
-function restartTimer(){if(timer)clearInterval(timer);timer=null;if(!playing||game.phase!=='running')return;timer=setInterval(()=>{game=advanceDay(game);if(game.phase!=='running'){playing=false;restartTimer();}render();promptEvolution();},speed===1?850:speed===5?170:50);}
-$('startBtn').onclick=()=>{game=startGame(game);playing=true;restartTimer();message('Simulação iniciada.');render();};
+function restartTimer(){if(timer)clearInterval(timer);timer=null;if(!playing||game.phase!=='running')return;timer=setInterval(()=>{game=advanceDay(game);if(game.phase!=='running'){playing=false;restartTimer();}render();if(game.day%10===0 || game.phase!=='running')autosave();promptEvolution();},speed===1?850:speed===5?170:50);}
+$('startBtn').onclick=()=>{game=startGame(game);playing=true;restartTimer();message('Simulação iniciada.');cueSound('start',true);render();};
 $('playBtn').onclick=()=>{if(game.phase!=='running')return;playing=!playing;restartTimer();render();};
-$('stepBtn').onclick=()=>{if(game.phase!=='running')return;playing=false;restartTimer();game=advanceDay(game);render();promptEvolution();};
+$('stepBtn').onclick=()=>{if(game.phase!=='running')return;playing=false;restartTimer();game=advanceDay(game);render();if(game.day%10===0 || game.phase!=='running')autosave();promptEvolution();};
 $('resetBtn').onclick=()=>{if(game.phase!=='setup'&&!confirm('Descartar o progresso não salvo?'))return;playing=false;restartTimer();previousRun=null;seenOutcome=null;lastEvolutionPrompt=null;showOutcome(false);game=createGame(selected,Math.floor(Date.now()%2000000000),game.mode);message('Novo cenário pronto.');render();};
-$('saveBtn').onclick=()=>{try{localStorage.setItem('project-zero-save-v1',JSON.stringify(game));message('Partida salva no navegador.');}catch{message('Falha ao salvar neste navegador.');}};
-$('loadBtn').onclick=()=>{try{const stored=localStorage.getItem('project-zero-save-v1');if(!stored){message('Nenhuma partida salva.');return;}const parsed=JSON.parse(stored);const restored=restoreGame(parsed);if(!restored){message('Save incompatível.');return;}playing=false;restartTimer();previousRun=null;seenOutcome=null;lastEvolutionPrompt=null;showOutcome(false);game=restored;selected=game.origin;message('Partida restaurada.');render();}catch{message('Não foi possível carregar.');}};
+$('saveBtn').onclick=()=>{const result=writeSave(gameStorage(),'manual',game);message(result.status==='ok'?'Save manual gravado. O anterior foi protegido, quando existente.':result.status==='backup-failed'?'Backup indisponível; o save manual anterior foi preservado.':'Falha ao salvar no navegador.');};
+function loadSlot(slot){
+ const result=readSave(gameStorage(),slot);
+ if(result.status!=='ok'){message(result.status==='missing'?'Nenhum save neste slot.':result.status==='invalid'?'Save inválido; use backup ou autosave.':'Armazenamento indisponível.');return;}
+ if(game.phase!=='setup'&&game.day>0&&!confirm('Substituir a partida atual? Exporte-a antes, se desejar.'))return;
+ playing=false;restartTimer();previousRun=null;seenOutcome=null;lastEvolutionPrompt=null;showOutcome(false);
+ game=result.game;selected=game.origin;message('Partida recuperada e pausada no dia '+game.day+'.');render();
+}
+$('loadBtn').onclick=()=>loadSlot('manual');
+$('recoveryBtn').onclick=()=>loadSlot('automatico');
+$('backupBtn').onclick=()=>loadSlot('backup');
+$('exportBtn').onclick=()=>{
+ const blob=new Blob([JSON.stringify(game,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=url;a.download='project-zero-seed-'+game.seed+'-dia-'+game.day+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);message('Arquivo de save exportado.');
+};
+$('importBtn').onclick=()=>$('importInput').click();
+$('importInput').onchange=async e=>{
+ const file=e.target.files&&e.target.files[0];e.target.value='';if(!file)return;
+ if(file.size>MAX_IMPORT_BYTES){message('Save grande demais: máximo 2,5 MB.');return;}
+ try{const result=parseGameJson(await file.text());if(result.status!=='ok'){message('Arquivo inválido. Partida preservada.');return;}
+ if(game.phase!=='setup'&&game.day>0&&!confirm('Substituir a partida atual pelo arquivo?'))return;
+ playing=false;restartTimer();previousRun=null;seenOutcome=null;lastEvolutionPrompt=null;showOutcome(false);game=result.game;selected=game.origin;render();message('Arquivo importado com segurança.');
+ }catch{message('Não foi possível ler o arquivo.');}
+};
+function autosave(){if(game.day>0&&game.phase!=='setup')writeSave(gameStorage(),'automatico',game);}
+window.addEventListener('pagehide',autosave);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autosave();});
 $('originSelect').onchange=e=>selectCountry(e.target.value);
 $('modeSelect').onchange=e=>{game=changeMode(game,e.target.value);render();};
 $('intelRanking').onclick=e=>{const btn=e.target.closest('[data-country]');if(btn)selectCountry(btn.dataset.country);};
@@ -180,24 +270,25 @@ function renderLab(){
   $('labBudgetMeter').innerHTML=Array.from({length:ATTRIBUTE_BUDGET},(_,i)=>'<i class="'+(i<ATTRIBUTE_BUDGET-free?'filled':'')+'"></i>').join('');
   $('labGrowth').textContent=ratio(mod.growthFactor);$('labNetwork').textContent=ratio(mod.networkFactor);$('labSignal').textContent=ratio(mod.signalFactor);$('labScience').textContent=ratio(mod.scienceFactor);
   $('labAttributes').innerHTML=ATTRIBUTE_IDS.map(id=>{const d=ATTRIBUTES[id],n=a[id];return `<div class="lab-attribute"><div class="lab-attribute-head"><div><span class="lab-dot ${d.color}"></span><strong>${esc(d.title)}</strong></div><span>NÍVEL ${n}/${ATTRIBUTE_MAX}</span></div><p>${esc(d.description)}</p><div class="lab-attribute-controls"><button type="button" data-attr="${id}" data-delta="-1" aria-label="Diminuir ${esc(d.title)}" ${!setup||n===0?'disabled':''}>−</button><div class="lab-level-meter">${Array.from({length:ATTRIBUTE_MAX},(_,i)=>'<i class="'+(i<n?d.color:'')+'"></i>').join('')}</div><button type="button" data-attr="${id}" data-delta="1" aria-label="Aumentar ${esc(d.title)}" ${!setup||n===ATTRIBUTE_MAX||!free?'disabled':''}>+</button></div><small>${esc(d.impact)}</small></div>`;}).join('');
-  $('labUpgrades').innerHTML=UPGRADES.map((up,i)=>{const check=availableUpgrade(game,up.id),owned=game.agent.purchased.includes(up.id);return `<article class="lab-upgrade ${owned?'owned':check.ok?'lab-available':''}"><div class="lab-upgrade-head"><span class="lab-upgrade-symbol">${String(i+1).padStart(2,'0')}</span><span class="lab-upgrade-cost">${up.cost} PT</span></div><h4>${esc(up.title)}</h4><p>${esc(up.description)}</p><div class="lab-upgrade-effect">↑ ${esc(up.effect)}</div>${up.tradeoff?`<div class="lab-upgrade-tradeoff">↔ ${esc(up.tradeoff)}</div>`:''}<div class="lab-upgrade-requirement">REQUISITO: ${esc(ATTRIBUTES[up.requires].title.toUpperCase())} ${up.minLevel}+</div><button type="button" class="lab-buy ${owned?'purchased':''}" data-upgrade="${up.id}" ${!check.ok?'disabled':''}>${owned?'✓ ATIVADA':check.ok?'ATIVAR MELHORIA':esc(check.reason.toUpperCase())}</button></article>`;}).join('');
+  $('labUpgrades').innerHTML=UPGRADES.map((up,i)=>{const check=availableUpgrade(game,up.id),owned=game.agent.purchased.includes(up.id);return `<article class="lab-upgrade ${owned?'owned':check.ok?'lab-available':''}"><div class="lab-upgrade-head"><span class="lab-upgrade-symbol">${String(i+1).padStart(2,'0')}</span><span class="lab-upgrade-cost">${up.cost} PT</span></div><h4>${esc(up.title)}</h4><p>${esc(up.description)}</p><div class="lab-upgrade-effect">↑ ${esc(game.ruleset==='revisado'?'Efeito revisado: confira os multiplicadores após ativar':up.effect)}</div>${up.tradeoff||game.ruleset==='revisado'?`<div class="lab-upgrade-tradeoff">↔ ${esc(game.ruleset==='revisado'?'Pesquisa global responde às evoluções adquiridas':up.tradeoff)}</div>`:''}<div class="lab-upgrade-requirement">REQUISITO: ${esc(ATTRIBUTES[up.requires].title.toUpperCase())} ${up.minLevel}+</div><button type="button" class="lab-buy ${owned?'purchased':''}" data-upgrade="${up.id}" ${!check.ok?'disabled':''}>${owned?'✓ ATIVADA':check.ok?'ATIVAR MELHORIA':esc(check.reason.toUpperCase())}</button></article>`;}).join('');
   $('labEligibility').style.display=game.phase==='running'?'block':'none';
+  $('labDecision').style.display=decisionMessage?'block':'none';$('labDecision').textContent=decisionMessage;
   $('labEligibility').textContent='◈ '+UPGRADES.filter(u=>availableUpgrade(game,u.id).ok).length+' melhorias e '+TACTICS.filter(t=>availableTactic(game,t.id,selected).ok).length+' ações táticas disponíveis agora.';
   $('tacticTarget').innerHTML=COUNTRIES.map(c=>`<option value="${c.id}">${esc(c.flag)} ${esc(c.name)}</option>`).join('');
   $('tacticTarget').value=selected;$('tacticTarget').disabled=game.phase!=='running';
   $('tacticTargetLabel').textContent=COUNTRY_BY_ID[selected].flag+' '+COUNTRY_BY_ID[selected].name+' · '+(game.countries[selected].affected>0?'Em atividade':'Sem atividade');
-  $('tacticSpent').textContent='Total gasto em ações: '+game.agent.spentTactics+' PT. Regras fictícias.';
-  $('tacticGrid').innerHTML=TACTICS.map(t=>{const check=availableTactic(game,t.id,selected);return `<article class="lab-tactic"><div class="lab-tactic-title"><strong>${esc(t.title)}</strong><span>${t.cost} PT</span></div><p>${esc(t.description)}</p><small>${esc(t.effect)}</small><button type="button" data-tactic="${t.id}" ${!check.ok?'disabled':''}>${check.ok?'APLICAR AGORA':esc(check.reason.toUpperCase())}</button></article>`;}).join('');
+  $('tacticSpent').textContent='Total gasto em ações: '+game.agent.spentTactics+' PT. Regras '+(game.ruleset==='revisado'?'revisadas':'legadas')+'.';
+  $('tacticGrid').innerHTML=TACTICS.map(t=>{const check=availableTactic(game,t.id,selected);return `<article class="lab-tactic"><div class="lab-tactic-title"><strong>${esc(t.title)}</strong><span>${getTacticCost(game,t.id)} PT</span></div><p>${esc(t.description)}</p><small>${esc(t.id==='pulso' && game.ruleset==='revisado'?'+0,3 ponto percentual no território (limitado ao restante)':t.effect)}</small><button type="button" data-tactic="${t.id}" ${!check.ok?'disabled':''}>${check.ok?'APLICAR AGORA':esc(check.reason.toUpperCase())}</button></article>`;}).join('');
 }
-function toggleLab(show){labVisible=show;if(show){playing=false;restartTimer();renderLab();}$('labBackdrop').style.display=show?'flex':'none';$('labBackdrop').setAttribute('aria-hidden',show?'false':'true');if(show)$('labClose').focus();render();}
+function toggleLab(show){labVisible=show;if(show){playing=false;restartTimer();decisionMessage='';renderLab();}$('labBackdrop').style.display=show?'flex':'none';$('labBackdrop').setAttribute('aria-hidden',show?'false':'true');if(show)$('labClose').focus();render();}
 $('labAlert').onclick=()=>toggleLab(true);$('openLabBtn').onclick=()=>toggleLab(true);$('openLabQuick').onclick=()=>toggleLab(true);$('labClose').onclick=()=>toggleLab(false);$('labDone').onclick=()=>toggleLab(false);
 $('labBackdrop').onmousedown=e=>{if(e.target===$('labBackdrop'))toggleLab(false);};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&labVisible)toggleLab(false);});
 $('labAgentName').oninput=e=>{game=setAgentName(game,e.target.value);};
 $('labAttributes').onclick=e=>{const btn=e.target.closest('[data-attr]');if(!btn||btn.disabled)return;game=adjustAttribute(game,btn.dataset.attr,Number(btn.dataset.delta));renderLab();};
-$('labUpgrades').onclick=e=>{const btn=e.target.closest('[data-upgrade]');if(!btn||btn.disabled)return;game=buyUpgrade(game,btn.dataset.upgrade);renderLab();render();};
+$('labUpgrades').onclick=e=>{const btn=e.target.closest('[data-upgrade]');if(!btn||btn.disabled)return;const feedback=upgradeFeedback(game,btn.dataset.upgrade);game=buyUpgrade(game,btn.dataset.upgrade);autosave();if(feedback){decisionMessage=feedback;message(feedback);cueSound('upgrade',true);}renderLab();render();};
 $('tacticTarget').onchange=e=>{if(game.phase!=='running'||!COUNTRY_BY_ID[e.target.value])return;selected=e.target.value;renderLab();render();};
-$('tacticGrid').onclick=e=>{const btn=e.target.closest('[data-tactic]');if(!btn||btn.disabled)return;game=applyTactic(game,btn.dataset.tactic,selected);renderLab();render();};
+$('tacticGrid').onclick=e=>{const btn=e.target.closest('[data-tactic]');if(!btn||btn.disabled)return;const before=game;game=applyTactic(game,btn.dataset.tactic,selected);autosave();const feedback=tacticFeedback(before,game,btn.dataset.tactic,selected);if(feedback){decisionMessage=feedback;message(feedback);cueSound('tactic',true);}renderLab();render();};
 
 const resultBackdrop=document.createElement('div');
 resultBackdrop.id='resultBackdrop';resultBackdrop.className='result-backdrop';resultBackdrop.style.display='none';document.body.appendChild(resultBackdrop);
@@ -206,7 +297,7 @@ function showOutcome(visible){
  const current=summarizeRun(game);if(!current)return;
  const milestones=buildMilestones(game),victory=current.outcome==='overwhelmed',same=comparableRuns(previousRun,current);
  resultBackdrop.innerHTML=`<section class="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title">
- <header class="result-topline"><span>PROJECT ZERO / RELATÓRIO DE MISSÃO <b>V0.7</b></span><button class="result-close" type="button" data-outcome-action="close" aria-label="Fechar resultado">✕</button></header>
+ <header class="result-topline"><span>PROJECT ZERO / RELATÓRIO DE MISSÃO <b>V0.11.0</b></span><button class="result-close" type="button" data-outcome-action="close" aria-label="Fechar resultado">✕</button></header>
  <div class="result-hero ${victory?'result-success':'result-containment'}"><span class="result-eyebrow">CENÁRIO ENCERRADO · DIA ${current.day} · SEED #${current.seed}</span><h2 id="result-title">${victory?'Limite crítico atingido.':'Contenção científica concluída.'}</h2><p>${victory?'O cenário ultrapassou 70% de impacto antes da conclusão da pesquisa científica.':'A pesquisa global atingiu a meta de '+current.researchGoal+'% antes do limite crítico.'}</p><span class="result-origin">${COUNTRY_BY_ID[current.origin].flag} Origem: ${esc(COUNTRY_BY_ID[current.origin].name)} · ${esc(MODES[current.mode].title)}</span></div>
  <div class="result-scroll"><div class="result-kpis"><div><span>DIAS DE PARTIDA</span><strong>${current.day}</strong></div><div><span>POPULAÇÃO IMPACTADA</span><strong>${pct(current.affectedPct)}</strong></div><div><span>PESQUISA GLOBAL</span><strong>${pct(current.research)}</strong></div><div><span>EVOLUÇÕES / GASTO TÁTICO</span><strong>${current.upgrades} / ${current.tacticsSpent} PT</strong></div></div>
  <div class="result-section-title"><h3>Diagnóstico estratégico</h3><span>MODO ${esc(MODES[current.mode].title.toUpperCase())}</span></div>
@@ -234,8 +325,33 @@ resultBackdrop.onclick=e=>{
 $('gameEnd').onclick=e=>{if(e.target.closest('[data-outcome-action="open"]'))showOutcome(true);};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&resultBackdrop.style.display==='flex')showOutcome(false);});
 
-initMap();render();
+$('guideAction').onclick=()=>{if(guideAction==='lab')toggleLab(true);else if(guideAction==='start')$('startBtn').click();else if(guideAction==='outcome')showOutcome(true);};
+function renderTour(){
+ const step=TUTORIAL_STEPS[tourStep];
+ $('tourCaption').textContent=step.caption;$('tour-title').textContent=step.title+'.';$('tour-description').textContent=step.text;
+ $('tourCounter').textContent=String(tourStep+1).padStart(2,'0')+' / '+String(TUTORIAL_STEPS.length).padStart(2,'0');
+ $('tourBack').style.display=tourStep===0?'none':'block';$('tourNext').textContent=tourStep===TUTORIAL_STEPS.length-1?'ABRIR LABORATÓRIO →':'PRÓXIMO PASSO →';
+ $('tourProgress').innerHTML=TUTORIAL_STEPS.map((s,i)=>`<button type="button" data-tour-step="${i}" aria-label="Ir para etapa ${i+1}" ${i===tourStep?'aria-current="step" class="active"':''}></button>`).join('');
+}
+function closeTour(){tourVisible=false;$('tourBackdrop').style.display='none';$('tourBackdrop').setAttribute('aria-hidden','true');try{localStorage.setItem(GUIDE_KEY,'complete');}catch{} $('helpBtn').focus();}
+function openTour(){if(labVisible)toggleLab(false);playing=false;restartTimer();tourStep=0;tourVisible=true;renderTour();$('tourBackdrop').style.display='flex';$('tourBackdrop').setAttribute('aria-hidden','false');$('tourClose').focus();render();}
+$('helpBtn').onclick=openTour;$('tourClose').onclick=closeTour;$('tourSkip').onclick=closeTour;
+$('tourBack').onclick=()=>{tourStep=Math.max(0,tourStep-1);renderTour();};
+$('tourNext').onclick=()=>{if(tourStep===TUTORIAL_STEPS.length-1){closeTour();toggleLab(true);}else{tourStep++;renderTour();}};
+$('tourProgress').onclick=e=>{const b=e.target.closest('[data-tour-step]');if(b){tourStep=Number(b.dataset.tourStep);renderTour();}};
+$('tourBackdrop').onmousedown=e=>{if(e.target===$('tourBackdrop'))closeTour();};
+document.addEventListener('keydown',e=>{
+ if(!tourVisible)return;
+ if(e.key==='Escape'){e.preventDefault();closeTour();return;}
+ if(e.key==='Tab'){
+  const focusables=Array.from($('tourModal').querySelectorAll('button:not([disabled])'));
+  if(!focusables.length)return;
+  if(e.shiftKey&&document.activeElement===focusables[0]){e.preventDefault();focusables[focusables.length-1].focus();}
+  else if(!e.shiftKey&&document.activeElement===focusables[focusables.length-1]){e.preventDefault();focusables[0].focus();}
+ }
+});
+initMap();render();try{if(localStorage.getItem(GUIDE_KEY)!=='complete')openTour();}catch{openTour();}
 </script></body></html>'''
-html=html.replace('%%CSS%%',css).replace('%%COUNTRIES%%',countries).replace('%%LAB_MODULE%%',lab).replace('%%INTEL_MODULE%%',intel).replace('%%EVENTS_MODULE%%',events).replace('%%TACTICS_MODULE%%',tactics).replace('%%BALANCE_MODULE%%',balance).replace('%%ENGINE%%',engine).replace('%%OUTCOME_MODULE%%',outcome).replace('%%WORLD%%',world)
+html=html.replace('%%CSS%%',css).replace('%%COUNTRIES%%',countries).replace('%%LAB_MODULE%%',lab).replace('%%INTEL_MODULE%%',intel).replace('%%EVENTS_MODULE%%',events).replace('%%TACTICS_MODULE%%',tactics).replace('%%BALANCE_MODULE%%',balance).replace('%%ENGINE%%',engine).replace('%%PERSISTENCE_MODULE%%',persistence).replace('%%GUIDE_MODULE%%',guide).replace('%%OUTCOME_MODULE%%',outcome).replace('%%IMMERSION_MODULE%%',immersion).replace('%%WORLD%%',world)
 out=root/'preview-offline.html';out.write_text(html,encoding='utf-8')
 print(out, out.stat().st_size,'bytes')

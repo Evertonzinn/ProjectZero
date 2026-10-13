@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useDialogFocus } from './useDialogFocus';
+import { useRef } from 'react';
 import { ATTRIBUTE_BUDGET, ATTRIBUTE_IDS, ATTRIBUTE_MAX, ATTRIBUTES, UPGRADES, freeAttributePoints } from '../engine/laboratory';
 import type { AttributeId, UpgradeId } from '../engine/laboratory';
-import { availableTactic, availableUpgrade, getLabModifiers } from '../engine/simulation';
+import { availableTactic, availableUpgrade, getLabModifiers, getTacticCost } from '../engine/simulation';
 import { TACTICS } from '../engine/tactics';
 import type { TacticId } from '../engine/tactics';
 import { COUNTRIES, COUNTRY_BY_ID } from '../data/countries';
@@ -10,6 +11,7 @@ import type { GameState } from '../engine/simulation';
 const pct=(n:number)=>`${Math.round((n-1)*100)>=0?'+':''}${Math.round((n-1)*100)}%`;
 interface Props {
   game: GameState;
+  feedback: string;
   selected: string;
   onSelect: (id: string) => void;
   onTactic: (id:TacticId,countryId:string) => void;
@@ -19,24 +21,19 @@ interface Props {
   onPurchase: (id: UpgradeId) => void;
 }
 
-export function Laboratory({game,selected,onSelect,onTactic,onClose,onName,onAttribute,onPurchase}:Props) {
-  const closeRef=useRef<HTMLButtonElement>(null);
+export function Laboratory({game,feedback,selected,onSelect,onTactic,onClose,onName,onAttribute,onPurchase}:Props) {
+  const modalRef=useRef<HTMLElement>(null);
+  useDialogFocus(modalRef,onClose);
   const setup=game.phase==='setup';
   const free=freeAttributePoints(game.agent.attributes);
   const modifiers=getLabModifiers(game);
   const affordableUpgrades=UPGRADES.filter(u=>availableUpgrade(game,u.id).ok).length;
   const affordableTactics=TACTICS.filter(t=>availableTactic(game,t.id,selected).ok).length;
-  useEffect(()=>{
-    closeRef.current?.focus();
-    const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose();};
-    window.addEventListener('keydown',onKey);
-    return ()=>window.removeEventListener('keydown',onKey);
-  },[]);
   return <div className="lab-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <section className="lab-modal" role="dialog" aria-modal="true" aria-labelledby="labTitle">
+    <section ref={modalRef} tabIndex={-1} className="lab-modal" role="dialog" aria-modal="true" aria-labelledby="labTitle">
       <header className="lab-header">
         <div className="lab-heading"><div className="lab-glyph">⬡</div><div><span className="lab-eyebrow">PROJECT ZERO / MÓDULO 02</span><h2 id="labTitle">Laboratório <em>Zero</em></h2><p>Configure seu protocolo ficcional e escolha como o cenário evolui.</p></div></div>
-        <button className="lab-close" ref={closeRef} type="button" aria-label="Fechar laboratório" onClick={onClose}>✕</button>
+        <button className="lab-close" type="button" aria-label="Fechar laboratório" onClick={onClose}>✕</button>
       </header>
       <div className="lab-body">
         <div className="lab-config">
@@ -57,22 +54,23 @@ export function Laboratory({game,selected,onSelect,onTactic,onClose,onName,onAtt
         </div>
         <div className="lab-evolutions">
           <div className="lab-section-heading"><div><span>02 / EVOLUÇÃO</span><h3>Árvore de melhorias</h3></div><div className="lab-points"><span>{game.phase==='running'?'PONTOS DISPONÍVEIS':game.phase==='setup'?'PONTOS FUTUROS':'SALDO FINAL (BLOQUEADO)'}</span><strong>{game.agent.points.toString().padStart(2,'0')}</strong></div></div>
-          <div className="lab-callout"><span>◈</span><p>{game.phase==='running'?<>Ganhe <b>2 pontos a cada 10 dias</b>. O relógio pausa automaticamente para permitir decisões. Compre melhorias uma vez ou invista em ações táticas repetíveis.</>:game.phase==='setup'?<>Distribua os <b>8 pontos iniciais</b> à esquerda. Os pontos de evolução começam no dia 10; depois, o jogo pausa para você utilizá-los.</>:<>A partida foi encerrada. <b>Os pontos restantes são históricos</b> e não podem ser gastos. Use Repetir mesma seed para tentar outra estratégia.</>}</p></div>
+          <div className="lab-callout"><span>◈</span><p>{game.phase==='running'?<>Ganhe <b>2 pontos a cada 10 dias</b>. O relógio pausa automaticamente para permitir decisões. Compre melhorias uma vez ou invista em ações táticas repetíveis. No conjunto revisado, melhorias também aceleram a pesquisa global; confira os modificadores após comprar.</>:game.phase==='setup'?<>Distribua os <b>8 pontos iniciais</b> à esquerda. Os pontos de evolução começam no dia 10; depois, o jogo pausa para você utilizá-los.</>:<>A partida foi encerrada. <b>Os pontos restantes são históricos</b> e não podem ser gastos. Use Repetir mesma seed para tentar outra estratégia.</>}</p></div>
+          {feedback&&<div className="lab-decision-feedback" role="status" aria-live="polite">{feedback}</div>}
           {game.phase==='running'&&<div className="lab-eligibility" role="status">◈ {affordableUpgrades} melhorias e {affordableTactics} ações táticas disponíveis agora. Selecione as opções habilitadas.</div>}
           <div className="lab-upgrades">{UPGRADES.map((up,i)=>{
             const available=availableUpgrade(game,up.id),owned=game.agent.purchased.includes(up.id);
             return <article className={`lab-upgrade ${owned?'owned':available.ok?'lab-available':''}`} key={up.id}>
               <div className="lab-upgrade-head"><span className="lab-upgrade-symbol">{String(i+1).padStart(2,'0')}</span><span className="lab-upgrade-cost">{up.cost} PT</span></div>
               <h4>{up.title}</h4><p>{up.description}</p>
-              <div className="lab-upgrade-effect">↑ {up.effect}</div>
-              {up.tradeoff&&<div className="lab-upgrade-tradeoff">↔ {up.tradeoff}</div>}
+              <div className="lab-upgrade-effect">↑ {game.ruleset==='revisado'?'Efeitos revisados; confira os multiplicadores após ativar':up.effect}</div>
+              {(up.tradeoff||game.ruleset==='revisado')&&<div className="lab-upgrade-tradeoff">↔ {game.ruleset==='revisado'?'Pesquisa global responde às evoluções adquiridas':up.tradeoff}</div>}
               <div className="lab-upgrade-requirement">REQUISITO: {ATTRIBUTES[up.requires].title.toUpperCase()} {up.minLevel}+</div>
               <button className={owned?'lab-buy purchased':'lab-buy'} type="button" disabled={!available.ok} onClick={()=>onPurchase(up.id)}>{owned?'✓ ATIVADA':available.ok?'ATIVAR MELHORIA':available.reason.toUpperCase()}</button>
             </article>;
           })}</div>
           <div className="lab-tactics" aria-label="Ações táticas repetíveis">
-            <div className="lab-tactics-header"><div><span>03 / DECISÕES TÁTICAS</span><h3>Aplicar pontos no mapa</h3></div><span>SEM LIMITE DE USOS</span></div>
-            <p>As melhorias acima são únicas. As operações abaixo podem ser repetidas enquanto houver pontos. Suas consequências são aplicadas somente ao território escolhido e ficam registradas no boletim.</p>
+            <div className="lab-tactics-header"><div><span>03 / DECISÕES TÁTICAS</span><h3>Aplicar pontos no mapa</h3></div><span>CUSTO PROGRESSIVO · REGRAS {game.ruleset==='revisado'?'REVISADAS':'LEGADAS'}</span></div>
+            <p>As melhorias acima são únicas. As operações abaixo podem ser repetidas enquanto houver pontos. No conjunto revisado, cada duas utilizações de uma ação aumentam seu custo em 2 PT. Suas consequências são aplicadas somente ao território escolhido e ficam registradas no boletim.</p>
             <label htmlFor="tactic-target">TERRITÓRIO ALVO</label>
             <select id="tactic-target" value={selected} onChange={event=>onSelect(event.target.value)} disabled={game.phase!=='running'}>
               {COUNTRIES.map(country=><option key={country.id} value={country.id}>{country.flag} {country.name}</option>)}
@@ -81,8 +79,8 @@ export function Laboratory({game,selected,onSelect,onTactic,onClose,onName,onAtt
             <div className="lab-tactic-grid">{TACTICS.map(tactic=>{
               const available=availableTactic(game,tactic.id,selected);
               return <article className="lab-tactic" key={tactic.id}>
-                <div className="lab-tactic-title"><strong>{tactic.title}</strong><span>{tactic.cost} PT</span></div>
-                <p>{tactic.description}</p><small>{tactic.effect}</small>
+                <div className="lab-tactic-title"><strong>{tactic.title}</strong><span>{getTacticCost(game,tactic.id)} PT</span></div>
+                <p>{tactic.description}</p><small>{tactic.id==='pulso' && game.ruleset==='revisado'?'+0,3 ponto percentual no território (limitado ao restante)':tactic.effect}</small>
                 <button type="button" disabled={!available.ok} onClick={()=>onTactic(tactic.id,selected)}>{available.ok?'APLICAR AGORA':available.reason.toUpperCase()}</button>
               </article>;
             })}</div>
