@@ -61,3 +61,20 @@ test('autosave grava fase encerrada e restaura sem alterar o resultado',()=>{
  const st=storage();assert.equal(writeSave(st,'automatico',g).status,'ok');
  const x=readSave(st,'automatico');assert.equal(x.status,'ok');assert.equal(x.game.phase,g.phase);
 });
+
+test('PZ-01: importação rejeita nomes herdados, tipos inválidos e preserva partidas legítimas',()=>{
+ const valid=run();
+ for(const origin of ['constructor','__proto__','toString','XYZ',null,[],{},12]){
+   const altered={...valid,origin};
+   assert.equal(parseGameJson(JSON.stringify(altered)).status,'invalid',String(origin));
+   assert.equal(restoreGame(altered),null,String(origin));
+   const legacy={...altered,version:6};
+   assert.equal(parseGameJson(JSON.stringify(legacy)).status,'invalid','save legado: '+String(origin));
+ }
+ for(const origin of ['BRA','JPN','DEU']){
+   const candidate={...valid,origin};
+   assert.equal(parseGameJson(JSON.stringify(candidate)).status,'ok',origin);
+ }
+ assert.throws(()=>createGame('constructor',123));
+ assert.throws(()=>createGame('__proto__',123));
+});
