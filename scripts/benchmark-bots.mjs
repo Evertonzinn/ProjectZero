@@ -6,13 +6,13 @@ const SEEDS=[7,11,21,42,75,101,123,124,222,333,444,555,777,1001,2026,20261012];
 const ORIGINS=['BRA','USA','CHN'];
 const MODES_TO_TEST=Object.keys(MODES);
 
-export function benchmarkBots({seeds=SEEDS,origins=ORIGINS,modes=MODES_TO_TEST,bots=BOT_IDS,verify=false}={}){
+export function benchmarkBots({seeds=SEEDS,origins=ORIGINS,modes=MODES_TO_TEST,bots=BOT_IDS,verify=false,ruleset='revisado'}={}){
   const rows=[];
   const result=[];
   for(const mode of modes)for(const bot of bots){
     const trials=[];
     for(const origin of origins)for(const seed of seeds){
-      const {game,...result}=simulateBot({seed,origin,mode,botId:bot,verify});
+      const {game,...result}=simulateBot({seed,origin,mode,botId:bot,verify,ruleset});
       trials.push(result);
     }
     const total=trials.length,contained=trials.filter(x=>x.outcome==='contained').length;
@@ -40,7 +40,7 @@ export function benchmarkBots({seeds=SEEDS,origins=ORIGINS,modes=MODES_TO_TEST,b
       }
     }
   }
-  const summary={setup:{seeds,origins,modes,bots},total:result.length,rows,different,controlComparisons,
+  const summary={setup:{seeds,origins,modes,bots,ruleset},total:result.length,rows,different,controlComparisons,
     botDescriptions:Object.fromEntries(bots.map(id=>[id,BOT_INFO[id].rationale]))};
   return summary;
 }

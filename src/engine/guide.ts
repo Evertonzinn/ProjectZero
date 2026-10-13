@@ -2,7 +2,7 @@
 import { freeAttributePoints, UPGRADES, UPGRADE_BY_ID } from './laboratory.js';
 import type { UpgradeId } from './laboratory.js';
 import { COUNTRIES, COUNTRY_BY_ID } from '../data/countries.js';
-import { availableTactic, availableUpgrade, getWorldStats } from './simulation.js';
+import { availableTactic, availableUpgrade, getWorldStats, getLabModifiers } from './simulation.js';
 import type { GameState } from './simulation.js';
 import { TACTIC_BY_ID } from './tactics.js';
 import type { TacticId } from './tactics.js';
@@ -11,7 +11,7 @@ import { MODES } from './balance.js';
 export const TUTORIAL_STEPS = [
   { title:'Prepare o cenário', caption:'01 / CONFIGURAÇÃO', text:'Escolha um país de origem e o modo de dificuldade na coluna esquerda. A seed identifica a simulação: repetindo a mesma seed e os mesmos atributos, você pode comparar decisões.' },
   { title:'Distribua 8 pontos iniciais', caption:'02 / LABORATÓRIO', text:'Abra o Laboratório Zero e distribua até 8 pontos entre os quatro atributos. Eles definem sua estratégia de partida e são diferentes dos pontos de evolução conquistados depois.' },
-  { title:'Decida a cada 10 dias', caption:'03 / EVOLUÇÃO', text:'Inicie a simulação. A cada 10 dias você recebe 2 pontos de evolução, e o relógio pausa. Invista nas melhorias únicas ou em ações táticas repetíveis no país selecionado.' },
+  { title:'Decida a cada 10 dias', caption:'03 / EVOLUÇÃO', text:'Inicie a simulação. A cada 10 dias você recebe 2 pontos de evolução, e o relógio pausa. No balanceamento revisado, evoluções aceleram também a resposta científica, e o preço de ações táticas aumenta após usos repetidos. Invista nas melhorias únicas ou em ações táticas repetíveis no país selecionado.' },
   { title:'Leia o mundo e tente de novo', caption:'04 / RESULTADO', text:'Observe o mapa, os governos, os eventos e o avanço científico. O cenário acaba quando o impacto chega a 70% ou quando a pesquisa atinge a meta do modo. Repita a seed para testar outra estratégia.' },
 ] as const;
 
@@ -49,13 +49,17 @@ export function getGuidance(game: GameState, selected: string): Guidance {
 export function upgradeFeedback(before: GameState, id: UpgradeId): string | null {
   if (!availableUpgrade(before,id).ok) return null;
   const up=UPGRADE_BY_ID[id];
-  return `✓ ${up.title}: −${up.cost} PT. ${up.effect}${up.tradeoff?`; contrapartida: ${up.tradeoff}`:''}. Os modificadores valem nos próximos dias.`;
+  const beforeMods=getLabModifiers(before);
+  const afterMods=getLabModifiers({...before,agent:{...before.agent,purchased:[...before.agent.purchased,id]}});
+  const factors: [string,number,number][]=[['expansão',beforeMods.growthFactor,afterMods.growthFactor],['conexões',beforeMods.networkFactor,afterMods.networkFactor],['limiar de reação',beforeMods.signalFactor,afterMods.signalFactor],['resposta científica',beforeMods.scienceFactor,afterMods.scienceFactor]];
+  const changes=factors.filter(([,a,b])=>a!==b).map(([name,a,b])=>`${name}: ×${a.toFixed(2)} → ×${b.toFixed(2)}`);
+  return `✓ ${up.title}: −${up.cost} PT. ${changes.join('; ')}. Efeitos valem nos próximos dias.`;
 }
 
 export function tacticFeedback(before: GameState, after: GameState, id: TacticId, countryId: string): string | null {
   if (before===after) return null;
   const b=before.countries[countryId],a=after.countries[countryId],country=COUNTRY_BY_ID[countryId];
   if (!b||!a||!country) return null;
-  if (id==='pulso') return `✓ ${TACTIC_BY_ID[id].title}: −${TACTIC_BY_ID[id].cost} PT em ${country.name}. Indicador local: ${(b.affected/country.population*100).toFixed(2)}% → ${(a.affected/country.population*100).toFixed(2)}%.`;
-  return `✓ ${TACTIC_BY_ID[id].title}: −${TACTIC_BY_ID[id].cost} PT em ${country.name}. Estabilidade ${b.government.stability.toFixed(0)} → ${a.government.stability.toFixed(0)}; pressão ${b.government.pressure.toFixed(0)} → ${a.government.pressure.toFixed(0)}.`;
+  if (id==='pulso') return `✓ ${TACTIC_BY_ID[id].title}: −${before.agent.points-after.agent.points} PT em ${country.name}. Indicador local: ${(b.affected/country.population*100).toFixed(2)}% → ${(a.affected/country.population*100).toFixed(2)}%.`;
+  return `✓ ${TACTIC_BY_ID[id].title}: −${before.agent.points-after.agent.points} PT em ${country.name}. Estabilidade ${b.government.stability.toFixed(0)} → ${a.government.stability.toFixed(0)}; pressão ${b.government.pressure.toFixed(0)} → ${a.government.pressure.toFixed(0)}.`;
 }
