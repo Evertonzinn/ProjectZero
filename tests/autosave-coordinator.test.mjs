@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createGame,startGame,advanceDay} from '../.engine-build/engine/simulation.js';
 import {SAVE_KEYS,readSave,writeSave} from '../.engine-build/engine/persistence.js';
-import {AUTOSAVE_OWNER_KEY,AUTOSAVE_LEASE_MS,saveAutosaveWithLease,parseAutosaveOwner} from '../.engine-build/engine/autosaveCoordinator.js';
+import {AUTOSAVE_OWNER_KEY,AUTOSAVE_LEASE_MS,saveAutosaveWithLease,parseAutosaveOwner,coordinatedAutosave} from '../.engine-build/engine/autosaveCoordinator.js';
 function storage(){const m=new Map();return {m,getItem:k=>m.has(k)?m.get(k):null,setItem:(k,v)=>m.set(k,v)};}
 function game(seed=1,days=12){let g=startGame(createGame('BRA',seed));for(let i=0;i<days;i++)g=advanceDay(g);return g;}
 test('PZ-03: apenas a aba dona escreve; não sobrescreve autosave ao detectar concorrente',()=>{
@@ -51,4 +51,19 @@ test('PZ-03: mantém chaves antigas e reusa autosave legado sem metadados',()=>{
  assert.equal(saveAutosaveWithLease(s,updated,'A',false,123).status,'ok');
  assert.equal(readSave(s,'automatico').game.seed,3);
  assert.equal(SAVE_KEYS.manual,'project-zero-save-v1');
+});
+test('PZ-03: Web Locks serializa duas tentativas concorrentes',async()=>{
+ const original=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+ let previous=Promise.resolve();
+ const locks={request:(_name,callback)=>{const current=previous.then(()=>callback());previous=current.then(()=>undefined,()=>undefined);return current;}};
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{locks}});
+ try {
+   const s=storage();
+   const results=await Promise.all([coordinatedAutosave(s,game(10),'A'),coordinatedAutosave(s,game(11),'B')]);
+   assert.deepEqual(results.map(r=>r.status),['ok','conflict']);
+   assert.equal(readSave(s,'automatico').game.seed,10);
+ } finally {
+   if(original)Object.defineProperty(globalThis,'navigator',original);
+   else delete globalThis.navigator;
+ }
 });
