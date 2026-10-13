@@ -9,6 +9,7 @@ import type { GameMode } from './balance.js';
 export interface RunSummary {
   seed: number;
   mode: GameMode;
+  ruleset: GameState['ruleset'];
   origin: string;
   attributes: Attributes;
   day: number;
@@ -27,7 +28,7 @@ export function summarizeRun(game: GameState): RunSummary | null {
   if (game.phase !== 'contained' && game.phase !== 'overwhelmed') return null;
   const stats = getWorldStats(game);
   return {
-    seed:game.seed, mode:game.mode, origin:game.origin, attributes:{...game.agent.attributes},
+    seed:game.seed, mode:game.mode, ruleset:game.ruleset, origin:game.origin, attributes:{...game.agent.attributes},
     day:game.day, outcome:game.phase, researchGoal:MODES[game.mode].researchGoal, affectedPct:stats.affectedPct,
     research:stats.research, activeCountries:stats.activeCountries,
     upgrades:game.agent.purchased.length, tacticsSpent:game.agent.spentTactics, events:game.globalEvents.length,
@@ -35,12 +36,12 @@ export function summarizeRun(game: GameState): RunSummary | null {
 }
 
 export function comparableRuns(previous:RunSummary|null,current:RunSummary): boolean {
-  return !!previous && previous.seed===current.seed && previous.mode===current.mode && previous.origin===current.origin &&
+  return !!previous && previous.seed===current.seed && previous.mode===current.mode && previous.ruleset===current.ruleset && previous.origin===current.origin &&
     (Object.keys(current.attributes) as (keyof Attributes)[]).every(key=>previous.attributes[key]===current.attributes[key]);
 }
 
 export function repeatSeed(game:GameState):GameState {
-  const fresh = createGame(game.origin, game.seed, game.mode);
+  const fresh = createGame(game.origin, game.seed, game.mode, game.ruleset);
   return {...fresh,agent:{...fresh.agent,name:game.agent.name,attributes:{...game.agent.attributes}}};
 }
 

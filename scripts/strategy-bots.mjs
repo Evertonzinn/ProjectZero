@@ -108,9 +108,9 @@ export function playBotTurn(game, id){
 }
 
 /** Inicia e conclui uma partida com a mesma interface pública usada no navegador. */
-export function simulateBot({seed,origin,mode,botId,limit=350,verify=false}){
+export function simulateBot({seed,origin,mode,botId,limit=350,verify=false,ruleset='revisado'}){
   const bot=BOT_DEFINITIONS[botId];if(!bot)throw new Error(`Bot desconhecido: ${botId}`);
-  let game=createGame(origin,seed,mode);
+  let game=createGame(origin,seed,mode,mode==='classico'?'legado':ruleset);
   for(const attr of bot.attributes){const next=adjustAttribute(game,attr,1);if(next===game)throw new Error('Atributo inicial inválido');game=next;}
   game=startGame(game);
   let purchases=0,tactics=0;
@@ -125,7 +125,7 @@ export function simulateBot({seed,origin,mode,botId,limit=350,verify=false}){
   const expected=2*Math.floor(game.day/10);
   const cost=game.agent.purchased.reduce((sum,id)=>sum+({correntes:2,sombras:2,inercia:3,ruptura:3,rede:3,nucleo:3}[id]),0);
   if(game.agent.points+cost+game.agent.spentTactics!==expected) throw new Error('Contabilidade de pontos inconsistente');
-  return {seed,origin,mode,bot:botId,day:game.day,outcome:game.phase,
+  return {seed,origin,mode,ruleset,bot:botId,day:game.day,outcome:game.phase,
     impactPct:stats.affectedPct,researchPct:stats.research,upgrades:purchases,tactics,tacticPoints:game.agent.spentTactics,
     remainingPoints:game.agent.points,game};
 }

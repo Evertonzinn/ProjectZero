@@ -12,6 +12,8 @@ import type { GameMode } from './balance.js';
 
 export type Policy = 'normal' | 'atencao' | 'restricoes' | 'emergencia';
 export type Phase = 'setup' | 'running' | 'contained' | 'overwhelmed';
+export type Ruleset = 'legado' | 'revisado';
+export const CURRENT_RULESET: Ruleset = 'revisado';
 
 export interface CountryState {
   affected: number;
@@ -33,9 +35,11 @@ export interface AgentState {
   points: number;
   purchased: UpgradeId[];
   spentTactics: number;
+  tacticUses: Record<TacticId, number>;
 }
 export interface GameState {
-  version: 6;
+  version: 7;
+  ruleset: Ruleset;
   mode: GameMode;
   globalEvents: GlobalEvent[];
   agent: AgentState;
@@ -59,17 +63,18 @@ function noise(seed: number, day: number, id: string, channel: number): number {
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const policyStrength: Record<Policy, number> = { normal: 1, atencao: .82, restricoes: .57, emergencia: .39 };
 
-export function createGame(origin = 'BRA', seed = 20261012, mode: GameMode = DEFAULT_MODE): GameState {
+export function createGame(origin = 'BRA', seed = 20261012, mode: GameMode = DEFAULT_MODE, ruleset: Ruleset = mode==='classico'?'legado':CURRENT_RULESET): GameState {
   if (!COUNTRY_BY_ID[origin]) throw new Error('País de origem inválido');
   if (!Number.isSafeInteger(seed)) throw new Error('Seed inválida');
   if (!isGameMode(mode)) throw new Error('Modo inválido');
+  if (ruleset!=='legado' && ruleset!=='revisado') throw new Error('Regras inválidas');
   const countries = Object.fromEntries(COUNTRIES.map(c => [c.id, {
     affected: 0, newlyAffected: 0, research: 0, policy: 'normal' as Policy, government:initialGovernmentState(),
   }]));
-  return { version:6, mode, globalEvents:[], agent:{name:'PROTOCOLO ZERO',attributes:{...DEFAULT_ATTRIBUTES},points:0,purchased:[],spentTactics:0}, seed, day:0, origin, phase:'setup', countries, news:[], history:[{day:0, affected:0, research:0}] };
+  return { version:7, ruleset, mode, globalEvents:[], agent:{name:'PROTOCOLO ZERO',attributes:{...DEFAULT_ATTRIBUTES},points:0,purchased:[],spentTactics:0,tacticUses:{pulso:0,friccao:0}}, seed, day:0, origin, phase:'setup', countries, news:[], history:[{day:0, affected:0, research:0}] };
 }
 export function changeMode(game: GameState, mode: GameMode): GameState {
-  return game.phase==='setup' && isGameMode(mode) ? {...game,mode} : game;
+  return game.phase==='setup' && isGameMode(mode) ? {...game,mode,ruleset:mode==='classico'?'legado':game.mode==='classico'?'revisado':game.ruleset} : game;
 }
 export function changeOrigin(game: GameState, id: string): GameState {
   if (game.phase!=='setup' || !COUNTRY_BY_ID[id]) return game;
@@ -124,11 +129,17 @@ export function buyUpgrade(game: GameState, id: UpgradeId): GameState {
   return {...game,agent:{...game.agent,points:game.agent.points-def.cost,purchased:[...game.agent.purchased,id]},
     news:[{id:`upgrade-${id}`,day:game.day,category:'mundo' as const,text:`Laboratório: ${def.title} ativada no dia ${game.day}.`},...game.news].slice(0,70)};
 }
+/** Custo progressivo apenas nas partidas revisadas: evita acumular impulsos com retorno constante. */
+export function getTacticCost(game: GameState, id: TacticId): number {
+  const def=TACTIC_BY_ID[id];
+  if (!def) return Infinity;
+  return game.ruleset==='legado' ? def.cost : def.cost + Math.floor(game.agent.tacticUses[id] / 2) * 2;
+}
 export function availableTactic(game: GameState, id: TacticId, countryId: string): {ok:boolean;reason:string} {
   if (!Object.hasOwn(TACTIC_BY_ID,id)) return {ok:false,reason:'Ação desconhecida'};
   if (game.phase!=='running') return {ok:false,reason:game.phase==='setup'?'Inicie a simulação':'Partida encerrada'};
   if (!Object.hasOwn(COUNTRY_BY_ID,countryId)) return {ok:false,reason:'País inválido'};
-  if (game.agent.points<TACTIC_BY_ID[id].cost) return {ok:false,reason:'Pontos insuficientes'};
+  if (game.agent.points<getTacticCost(game,id)) return {ok:false,reason:`Exige ${getTacticCost(game,id)} pontos`};
   if (id==='pulso' && game.countries[countryId].affected===0) return {ok:false,reason:'País ainda sem atividade'};
   if (id==='pulso' && game.countries[countryId].affected===COUNTRY_BY_ID[countryId].population) return {ok:false,reason:'Território já no limite'};
   if (id==='friccao' && game.countries[countryId].government.stability===0 && game.countries[countryId].government.pressure===100) return {ok:false,reason:'Pressão já no limite'};
@@ -144,7 +155,7 @@ export function applyTactic(game: GameState, id: TacticId, countryId: string): G
   let updated: CountryState;
   let history=game.history;
   if (id==='pulso') {
-    const increment=Math.min(country.population-current.affected,Math.round(country.population*.012));
+    const increment=Math.min(country.population-current.affected,Math.round(country.population*(game.ruleset==='revisado'?.003:.012)));
     updated={...current,affected:current.affected+increment,newlyAffected:Math.min(country.population,current.newlyAffected+increment)};
     history=game.history.map((entry,i)=>i===game.history.length-1?{...entry,affected:entry.affected+increment}:entry);
   } else {
@@ -153,11 +164,13 @@ export function applyTactic(game: GameState, id: TacticId, countryId: string): G
       pressure:clamp(current.government.pressure+5,0,100),
     }};
   }
-  const spent=game.agent.spentTactics+def.cost;
-  return {...game, agent:{...game.agent,points:game.agent.points-def.cost,spentTactics:spent},
+  const cost=getTacticCost(game,id);
+  const spent=game.agent.spentTactics+cost;
+  return {...game, agent:{...game.agent,points:game.agent.points-cost,spentTactics:spent,
+    tacticUses:{...game.agent.tacticUses,[id]:game.agent.tacticUses[id]+1}},
     countries:{...game.countries,[countryId]:updated},history,
     news:[{id:`tactic-${game.day}-${countryId}-${spent}`,day:game.day,category:'mundo' as const,
-      text:`Laboratório: ${def.title} aplicada em ${country.name} por ${def.cost} pontos.`},...game.news].slice(0,70)};
+      text:`Laboratório: ${def.title} aplicada em ${country.name} por ${cost} pontos.`},...game.news].slice(0,70)};
 }
 
 export function startGame(game: GameState): GameState {
@@ -181,12 +194,13 @@ const policyName: Record<Policy, string> = {normal:'monitoramento',atencao:'aler
 export function getLabModifiers(game: GameState) {
   const a=game.agent.attributes;
   const has=(id:UpgradeId)=>game.agent.purchased.includes(id);
+  const revised=game.ruleset==='revisado';
   return {
-    growthFactor:(1+(a.propagacao-2)*.12)*(1+(a.instabilidade-2)*.055)*(has('correntes')?1.15:1)*(has('ruptura')?1.16:1)*(has('rede')?.88:1)*(has('nucleo')?1.24:1),
-    networkFactor:(1+(a.propagacao-2)*.08)*(has('rede')?1.65:1)*(has('nucleo')?.45:1),
-    signalFactor:(1+(a.discricao-2)*.16)*(has('sombras')?1.30:1),
-    defenseFactor:(1+(a.resistencia-2)*.06)*(has('inercia')?1.14:1),
-    scienceFactor:(1+(a.instabilidade-2)*.055)*(has('ruptura')?1.20:1),
+    growthFactor:(1+(a.propagacao-2)*(revised?.092:.12))*(1+(a.instabilidade-2)*.055)*(has('correntes')?(revised?1.07:1.15):1)*(has('ruptura')?(revised?1.16:1.16):1)*(has('rede')?.88:1)*(has('nucleo')?(revised?1.10:1.24):1),
+    networkFactor:(1+(a.propagacao-2)*(revised?.055:.08))*(has('rede')?(revised?1.30:1.65):1)*(has('nucleo')?.45:1),
+    signalFactor:(1+(a.discricao-2)*(revised?.12:.16))*(has('sombras')?(revised?1.14:1.30):1),
+    defenseFactor:(1+(a.resistencia-2)*.06)*(has('inercia')?(revised?1.07:1.14):1),
+    scienceFactor:(1+(a.instabilidade-2)*.055)*(has('ruptura')?(revised?1.08:1.20):1)*(revised?(1+.08*game.agent.purchased.length+.025*game.agent.tacticUses.pulso):1),
   };
 }
 
@@ -300,8 +314,8 @@ export function advanceDay(game: GameState): GameState {
   return result;
 }
 
-// Validação de saves legados e atuais antes de migrar para o schema v6.
-function isGameStateBase(value: unknown, version:1|2|3|4|5|6): boolean {
+// Validação de saves legados e atuais antes de migrar para o schema v7.
+function isGameStateBase(value: unknown, version:1|2|3|4|5|6|7): boolean {
   if (!value || typeof value!=='object') return false;
   const g=value as Partial<GameState>;
   if (g.version!==version || !Number.isSafeInteger(g.seed) || !Number.isInteger(g.day) || (g.day??-1)<0 || !g.origin || !COUNTRY_BY_ID[g.origin]) return false;
@@ -323,9 +337,9 @@ function isGameStateBase(value: unknown, version:1|2|3|4|5|6): boolean {
   });
 }
 export function isGameState(value: unknown): value is GameState {
-  if (!isGameStateBase(value,6)) return false;
+  if (!isGameStateBase(value,7)) return false;
   const g=value as GameState;
-  if (!isGameMode(g.mode)) return false;
+  if (!isGameMode(g.mode) || !['legado','revisado'].includes(g.ruleset)) return false;
   if (!Array.isArray(g.globalEvents) || g.globalEvents.length>120) return false;
   if (!g.globalEvents.every((e,i)=>{
     if (!e || typeof e!=='object' || !EVENT_KINDS.includes(e.kind) || !COUNTRY_BY_ID[e.countryId] ||
@@ -352,6 +366,10 @@ export function isGameState(value: unknown): value is GameState {
   const a=g.agent;
   if (!a || typeof a!=='object' || typeof a.name!=='string' || a.name.length>28 || !isAttributes(a.attributes)) return false;
   if (!Number.isInteger(a.points) || a.points<0 || a.points>1000 || !Number.isInteger(a.spentTactics) || a.spentTactics<0 || a.spentTactics>1000 || !Array.isArray(a.purchased) || a.purchased.length>UPGRADE_IDS.length) return false;
+  if (!a.tacticUses || Object.keys(a.tacticUses).length!==2 ||
+      !(['pulso','friccao'] as const).every(id=>Number.isInteger(a.tacticUses[id]) && a.tacticUses[id]>=0 && a.tacticUses[id]<=1000)) return false;
+  if (g.ruleset==='revisado' &&
+    (['pulso','friccao'] as const).reduce((total,id)=>total+Array.from({length:a.tacticUses[id]},(_,i)=>TACTIC_BY_ID[id].cost+2*Math.floor(i/2)).reduce((x,y)=>x+y,0),0)!==a.spentTactics) return false;
   if (!a.purchased.every(id=>UPGRADE_IDS.includes(id)) || new Set(a.purchased).size!==a.purchased.length) return false;
   if (a.purchased.some(id=>a.attributes[UPGRADE_BY_ID[id].requires]<UPGRADE_BY_ID[id].minLevel)) return false;
   if (a.purchased.some(id=>UPGRADE_BY_ID[id].excludes && a.purchased.includes(UPGRADE_BY_ID[id].excludes!))) return false;
@@ -361,15 +379,15 @@ export function isGameState(value: unknown): value is GameState {
 }
 export function restoreGame(value: unknown): GameState | null {
   if (isGameState(value)) return value;
-  const versions=[1,2,3,4,5] as const;
+  const versions=[1,2,3,4,5,6] as const;
   const version=versions.find(v=>isGameStateBase(value,v));
   if (!version) return null;
-  const old=value as Omit<GameState,'version'|'mode'|'globalEvents'|'agent'> & {version:1|2|3|4|5;globalEvents?:GlobalEvent[];agent?:Omit<AgentState,'spentTactics'>};
+  const old=value as Omit<GameState,'version'|'mode'|'globalEvents'|'agent'|'ruleset'> & {version:1|2|3|4|5|6;globalEvents?:GlobalEvent[];agent?:Omit<AgentState,'tacticUses'>};
   const countries=Object.fromEntries(COUNTRIES.map(c=>[c.id,{
     ...old.countries[c.id],
     government:version>=3?old.countries[c.id].government:{...initialGovernmentState(),since:old.day,until:old.day},
   }]));
-  const agent=version>=2?old.agent:{name:'PROTOCOLO ZERO',attributes:{...DEFAULT_ATTRIBUTES},points:Math.floor(old.day/10)*2,purchased:[]};
-  const migrated:GameState={...old,version:6,mode:'classico',globalEvents:version>=4?(old.globalEvents??[]):[],countries,agent:version===5?(old.agent as AgentState):{...agent!,spentTactics:0}};
+  const agent=version>=2?old.agent!:{name:'PROTOCOLO ZERO',attributes:{...DEFAULT_ATTRIBUTES},points:Math.floor(old.day/10)*2,purchased:[]};
+  const migrated:GameState={...old,version:7,ruleset:'legado',mode:version>=6 ? (old as unknown as GameState).mode:'classico',globalEvents:version>=4?(old.globalEvents??[]):[],countries,agent:{...agent!,spentTactics:version>=5 ? ((agent as Omit<AgentState,'tacticUses'>).spentTactics??0):0,tacticUses:{pulso:0,friccao:0}}};
   return isGameState(migrated)?migrated:null;
 }

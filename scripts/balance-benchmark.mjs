@@ -10,7 +10,7 @@ for(const mode of Object.keys(MODES)){
   for(const origin of origins)for(const seed of seeds){
     const outcomes=[];
     for(const strategy of strategies){
-      let g=createGame(origin,seed,mode);
+      let g=createGame(origin,seed,mode,'legado');
       if(strategy==='expansiva'){g=adjustAttribute(g,'propagacao',1);g=adjustAttribute(g,'instabilidade',1)}
       if(strategy==='discreta'){g=adjustAttribute(g,'discricao',1);g=adjustAttribute(g,'resistencia',1)}
       g=startGame(g);
