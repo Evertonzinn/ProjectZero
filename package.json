@@ -15,7 +15,7 @@
     "benchmark:compare": "tsc -p tsconfig.engine.json && node scripts/compare-rulesets.mjs",
     "report:balance": "tsc -p tsconfig.engine.json && node scripts/compare-rulesets.mjs",
     "test:persistence": "tsc -p tsconfig.engine.json && node --test tests/persistence.test.mjs",
-    "test:quality": "npm run test:engine && node --test tests/bots.test.mjs tests/persistence.test.mjs tests/immersion.test.mjs"
+    "test:quality": "npm run test:engine && node --test tests/bots.test.mjs tests/persistence.test.mjs tests/immersion.test.mjs tests/autosave-coordinator.test.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",
