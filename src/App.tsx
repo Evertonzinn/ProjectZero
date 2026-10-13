@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { readSave, writeSave, parseGameJson, MAX_IMPORT_BYTES } from './engine/persistence';
 import type { SaveSlot, StoragePort } from './engine/persistence';
 import type { ReactNode } from 'react';
@@ -59,6 +59,21 @@ export default function App() {
   const [playing,setPlaying]=useState(false);
   const [speed,setSpeed]=useState<1|5|20>(1);
   const [notice,setNotice]=useState('');
+  const [autosaveFailure,setAutosaveFailure]=useState<string|null>(null);
+  const [lastAutosave,setLastAutosave]=useState<{seed:number;day:number}|null>(null);
+  // Erros de autosave não podem ser escondidos por notificações transitórias.
+  const attemptAutosave=useCallback((snapshot:GameState)=>{
+    const result=writeSave(gameStorage(),'automatico',snapshot);
+    if(result.status==='ok'){
+      setLastAutosave({seed:snapshot.seed,day:snapshot.day});
+      setAutosaveFailure(null);
+    }else{
+      setAutosaveFailure(result.status==='invalid'
+        ? 'O estado desta partida não pôde ser validado para o autosave.'
+        : 'O navegador não conseguiu gravar o autosave (armazenamento bloqueado ou cheio).');
+    }
+    return result;
+  },[]);
   const {sound,motion,systemReduced,toggleSound,toggleMotion,cue}=useImmersion();
   const previousGame=useRef<GameState|null>(null);
   const [moment,setMoment]=useState<Moment|null>(null);
@@ -152,16 +167,16 @@ export default function App() {
     if(game.phase==='setup' || game.day===0)return;
     // Captura ciclos de decisão inclusive quando a simulação está acelerada.
     if(game.day%10!==0 && game.phase==='running')return;
-    const task=window.setTimeout(()=>writeSave(gameStorage(),'automatico',game),120);
+    const task=window.setTimeout(()=>attemptAutosave(game),120);
     return ()=>window.clearTimeout(task);
-  },[game]);
+  },[game,attemptAutosave]);
   useEffect(()=>{
-    const persist=()=>{const current=gameRef.current;if(current.phase!=='setup' && current.day>0)writeSave(gameStorage(),'automatico',current);};
+    const persist=()=>{const current=gameRef.current;if(current.phase!=='setup' && current.day>0)attemptAutosave(current);};
     window.addEventListener('pagehide',persist);
     const visibility=()=>{if(document.visibilityState==='hidden')persist();};
     document.addEventListener('visibilitychange',visibility);
     return ()=>{window.removeEventListener('pagehide',persist);document.removeEventListener('visibilitychange',visibility);};
-  },[]);
+  },[attemptAutosave]);
   const save=()=>{
     const result=writeSave(gameStorage(),'manual',game);
     setNotice(result.status==='ok'?'Save manual gravado. Cópia anterior preservada quando existente.':
@@ -264,6 +279,7 @@ export default function App() {
               <div className="speed-group" role="group" aria-label="Velocidade da simulação">{([1,5,20] as const).map(n=><button key={n} className={speed===n?'active':''} onClick={()=>setSpeed(n)} type="button">{n}×</button>)}</div>
             </div>
             {notice&&<div className="notification" role="status">{notice}</div>}
+            {autosaveFailure&&<div className="autosave-alert" role="alert"><div><strong>Autosave não confirmado</strong><p>{autosaveFailure} A partida continua jogável, mas o progresso recente pode não estar protegido.</p><small>{lastAutosave?.seed===game.seed?`Última gravação confirmada nesta aba: dia ${lastAutosave.day}.`:'Nenhuma gravação automática confirmada nesta sessão.'}</small></div><div className="autosave-actions"><button type="button" onClick={()=>attemptAutosave(game)}>TENTAR NOVAMENTE</button><button type="button" onClick={exportSave}>EXPORTAR JSON</button></div></div>}
             {moment&&<div className={`immersion-moment moment-${moment.cue}`} key={`${moment.day}-${moment.cue}`} role="status" aria-live="polite"><span className="moment-icon" aria-hidden="true">{moment.cue==='event'?'◈':moment.cue==='evolution'?'✦':'◆'}</span><div><strong>{moment.title}</strong><small>{moment.detail}</small></div><span className="moment-day">DIA {moment.day}</span></div>}
           </div>
           <div className="bottom-panels">
