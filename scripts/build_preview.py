@@ -15,6 +15,8 @@ guide=(root/'.engine-build/engine/guide.js').read_text().replace('export ','')
 persistence=(root/'.engine-build/engine/persistence.js').read_text().replace('export ','')
 autosave_coord=(root/'.engine-build/engine/autosaveCoordinator.js').read_text().replace('export ','')
 immersion=(root/'.engine-build/engine/immersion.js').read_text().replace('export ','')
+audio_player=(root/'.engine-build/engine/audioPlayer.js').read_text().replace('export ','')
+audio_player=re.sub(r'^import .*?;\n','',audio_player,flags=re.M)
 immersion=re.sub(r'^import .*?;\n','',immersion,flags=re.M)
 persistence=re.sub(r'^import .*?;\n','',persistence,flags=re.M)
 autosave_coord=re.sub(r'^import .*?;\n','',autosave_coord,flags=re.M)
@@ -29,7 +31,7 @@ html=r'''<!doctype html>
 <style>%%CSS%%
 .preview-hint{padding:10px 16px;margin-bottom:15px;border:1px solid #395044;color:#d7eaaa;background:#13201b;font-size:11px;line-height:1.5}.preview-hint b{color:#dfff95}.map-overlay{position:absolute;left:16px;bottom:16px;width:290px;max-width:70%;pointer-events:none;border:1px solid #485c45;background:#12202be8;padding:14px;display:grid;gap:6px}.map-overlay>small{font-size:10px;font-weight:750;color:#bfe77e;letter-spacing:1px}.map-overlay>strong{font-size:15px;color:#ecf6eb}.map-overlay>span{font-size:10px;color:#9db3b6}.map-viewport{height:clamp(350px,38vw,570px)}.preview-status{font-size:10px;color:#96adac}.preview-status strong{color:#c8eca3}.country-playable{cursor:pointer}.map-svg-tooltip{position:absolute;top:16px;left:16px;border:1px solid #3b5647;color:#e2f5d7;background:#182b32dd;padding:8px 12px;font-size:12px;font-weight:700;display:none}.radar-btn{height:35px;background:#132332;color:#badab4;border:1px solid #365040;padding:0 12px;font-size:10px;font-weight:750}.radar-btn:hover{background:#284139}.country-metrics{display:grid;gap:12px}.region-box{display:flex;flex-direction:column;gap:6px;border-bottom:1px solid #263845;padding-bottom:12px}.region-box>span{font-size:9px;color:#829aa9;letter-spacing:1px;font-weight:720}.region-box>strong{font-size:21px;color:#ebf5ef}.region-box>strong.hot{color:#f5a487}.attr{margin:10px 0}.attr header{display:flex;justify-content:space-between;color:#a8bdc2;font-size:10px;font-weight:720}.bar-bg{margin-top:7px;height:5px;background:#263946}.bar-progress{height:100%;background:#bce77a}.nation-title{font-size:21px;color:#f0f8f3;margin:7px 0 17px}.nation-title span{font-size:25px}.empty-news{min-height:60px}.chart-container{min-height:160px}.trend-svg{height:145px}.playback-title{display:flex}.news-list{max-height:185px}.quick-panel>button{font-size:12px}.status-summary{margin-bottom:10px;display:flex;justify-content:space-between;color:#97adb4;font-size:10px}.status-summary b{color:#b9e984}.scenario-panel .field-wrap{margin-bottom:13px}.country-attrs{display:block}.right-sidebar .panel-heading{padding:0 14px}@media(max-width:1080px){.right-sidebar .country-panel{display:block}.right-sidebar .country-attrs{display:block}}@media(max-width:730px){.page-body{padding-top:12px}.preview-hint{font-size:10px}.map-viewport{height:215px}.map-overlay{max-width:55%;padding:7px;bottom:7px;left:7px}.map-overlay>strong{font-size:11px}.map-overlay>span{display:none}.playback-title{display:flex}}
 </style></head>
-<body><div class="app immersion-root effects-on" id="previewApp"><header class="topbar"><div class="brand"><div class="brand-mark">◎</div><div class="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div><div class="topcenter"><span class="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span class="header-separator"></span><span class="build-label">ALPHA <span>0.11.0</span></span></div><div class="topright"><div class="immersion-settings" role="group" aria-label="Preferências de imersão"><button type="button" id="soundToggle" class="immersion-toggle" aria-pressed="false" title="Alternar efeitos sonoros">♪ SOM OFF</button><button type="button" id="motionToggle" class="immersion-toggle" aria-pressed="true" title="Alternar animações">✦ EFEITOS ON</button></div><button type="button" id="helpBtn" class="help-button" aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span class="server-dot"></span><span class="preview-local-status">EXECUÇÃO LOCAL</span></div></header>
+<body><div class="app immersion-root effects-on" id="previewApp"><header class="topbar"><div class="brand"><div class="brand-mark">◎</div><div class="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div><div class="topcenter"><span class="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span class="header-separator"></span><span class="build-label">ALPHA <span>0.11.0</span></span></div><div class="topright"><div class="immersion-settings" role="group" aria-label="Preferências de imersão"><button type="button" id="soundToggle" class="immersion-toggle" aria-pressed="false" title="Alternar efeitos sonoros">♪ SOM OFF</button><button type="button" id="soundTest" class="immersion-toggle audio-test" title="Testar som e desbloquear áudio após recarregar" hidden>♪ TESTAR SOM</button><span id="soundStatus" class="audio-status" role="status" aria-live="polite" hidden></span><button type="button" id="motionToggle" class="immersion-toggle" aria-pressed="true" title="Alternar animações">✦ EFEITOS ON</button></div><button type="button" id="helpBtn" class="help-button" aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span class="server-dot"></span><span class="preview-local-status">EXECUÇÃO LOCAL</span></div></header>
 <div class="page-body"><div class="preview-hint"><b>PRÉVIA INTERATIVA OFFLINE</b> — Clique em um país, escolha a origem e pressione INICIAR. Este arquivo funciona sem internet, sem servidor e sem npm. Governos decidem de forma autônoma; acompanhe as crises, a corrida científica e os acontecimentos com causas e efeitos persistentes. O projeto React/TypeScript está no ZIP.</div>
 <div class="eyebrow-row"><span>PAINEL DE OPERAÇÕES <b>/</b> MAPA GLOBAL</span><span class="scenario-id">CENÁRIO <b>ZERO / 001</b></span></div>
 <section class="headline"><div><h1>O mundo é seu tabuleiro<span class="headline-dot">.</span></h1><p>Dezoito nações, reações globais e consequências em cadeia.</p></div><div class="day-highlight"><span>DIA</span><strong id="headingDay">000</strong><div class="status-meta" id="headingStatus">AGUARDANDO</div></div></section>
@@ -87,6 +89,7 @@ const worldData=%%WORLD%%;
 %%GUIDE_MODULE%%
 %%OUTCOME_MODULE%%
 %%IMMERSION_MODULE%%
+%%AUDIO_PLAYER_MODULE%%
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const fmt=n=>new Intl.NumberFormat('pt-BR').format(n);
@@ -100,29 +103,30 @@ let guideAction='lab',decisionMessage='',tourStep=0,tourVisible=false;
 const GUIDE_KEY='project-zero-guide-v08';
 let immersionPrefs={...DEFAULT_IMMERSION};try{immersionPrefs=parsePreferences(window.localStorage.getItem(IMMERSION_KEY));}catch{}
 const mediaMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)');
-let systemReduced=!!mediaMotion?.matches, audioContext=null,lastSound=0,momentTimer=null,previousForMoment=game;
+let systemReduced=!!mediaMotion?.matches,lastSound=0,momentTimer=null,previousForMoment=game;
+const audioPlayer=createAudioPlayer(()=>window.AudioContext||window.webkitAudioContext);
+let audioStatus=immersionPrefs.sound?'needs-click':'off';
 function syncImmersion(){
  const moving=effectiveMotion(immersionPrefs.motion,systemReduced);
  $('previewApp').classList.toggle('effects-off',!moving);
  $('previewApp').classList.toggle('effects-on',moving);
  $('soundToggle').textContent=immersionPrefs.sound?'♪ SOM ON':'♪ SOM OFF';
  $('soundToggle').setAttribute('aria-pressed',String(immersionPrefs.sound));
+ $('soundTest').hidden=!immersionPrefs.sound;
+ $('soundStatus').hidden=!immersionPrefs.sound;
+ $('soundStatus').textContent=audioStatus==='ready'?'SINAL ENVIADO':audioStatus==='needs-click'?'TESTE O ÁUDIO':audioStatus==='blocked'?'ÁUDIO BLOQUEADO':audioStatus==='unavailable'?'ÁUDIO INDISPONÍVEL':'';
  $('motionToggle').textContent=moving?'✦ EFEITOS ON':'✦ EFEITOS OFF';
  $('motionToggle').setAttribute('aria-pressed',String(moving));
  $('motionToggle').title=systemReduced?'Movimento reduzido pelo sistema':'Alternar animações';
 }
 function cueSound(kind,gesture=false){
  if(!immersionPrefs.sound)return;
- const time=Date.now();if(time-lastSound<180&&!gesture)return;lastSound=time;
- try {
-  const Constructor=window.AudioContext||window.webkitAudioContext;
-  if(!Constructor)return;
-  if(!audioContext)audioContext=new Constructor();
-  if(audioContext.state==='suspended') {if(!gesture)return;void audioContext.resume().catch(()=>{});}
-  const tones={start:[330,440],upgrade:[440,587,740],tactic:[392,440],alert:[294,220],event:[350,466],evolution:[392,523],victory:[440,554,659],contained:[370,330,262]};
-  const melody=tones[kind]||tones.event, duration=(kind==='victory'||kind==='contained')?.16:.11;
-  melody.forEach((frequency,i)=>{const t=audioContext.currentTime+.012+i*duration*.82,osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type=kind==='alert'?'triangle':'sine';osc.frequency.value=frequency;gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(.038,t+.018);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);osc.connect(gain);gain.connect(audioContext.destination);osc.start(t);osc.stop(t+duration+.01);});
- }catch{}
+ const now=Date.now();if(now-lastSound<180&&!gesture)return;lastSound=now;
+ void audioPlayer.play(kind,gesture).then(result=>{
+  if(!immersionPrefs.sound)return;
+  audioStatus=result==='scheduled'?'ready':result==='unavailable'?'unavailable':'blocked';
+  syncImmersion();
+ });
 }
 function displayMoment(moment){
  const el=$('momentBanner');
@@ -136,7 +140,8 @@ function displayMoment(moment){
  momentTimer=setTimeout(()=>{el.style.display='none';},6000);
  cueSound(moment.cue);
 }
-$('soundToggle').onclick=()=>{immersionPrefs.sound=!immersionPrefs.sound;try{localStorage.setItem(IMMERSION_KEY,JSON.stringify(immersionPrefs));}catch{}syncImmersion();if(immersionPrefs.sound)cueSound('start',true);};
+$('soundToggle').onclick=()=>{immersionPrefs.sound=!immersionPrefs.sound;audioStatus=immersionPrefs.sound?'needs-click':'off';try{localStorage.setItem(IMMERSION_KEY,JSON.stringify(immersionPrefs));}catch{}syncImmersion();if(immersionPrefs.sound)cueSound('start',true);};
+$('soundTest').onclick=()=>cueSound('upgrade',true);
 $('motionToggle').onclick=()=>{immersionPrefs.motion=!immersionPrefs.motion;try{localStorage.setItem(IMMERSION_KEY,JSON.stringify(immersionPrefs));}catch{}syncImmersion();};
 mediaMotion?.addEventListener?.('change',()=>{systemReduced=mediaMotion.matches;syncImmersion();});
 syncImmersion();
@@ -394,6 +399,6 @@ document.addEventListener('keydown',e=>{
 });
 initMap();render();try{if(localStorage.getItem(GUIDE_KEY)!=='complete')openTour();}catch{openTour();}
 </script></body></html>'''
-html=html.replace('%%CSS%%',css).replace('%%COUNTRIES%%',countries).replace('%%LAB_MODULE%%',lab).replace('%%INTEL_MODULE%%',intel).replace('%%EVENTS_MODULE%%',events).replace('%%TACTICS_MODULE%%',tactics).replace('%%BALANCE_MODULE%%',balance).replace('%%ENGINE%%',engine).replace('%%PERSISTENCE_MODULE%%',persistence).replace('%%AUTOSAVE_COORD_MODULE%%',autosave_coord).replace('%%GUIDE_MODULE%%',guide).replace('%%OUTCOME_MODULE%%',outcome).replace('%%IMMERSION_MODULE%%',immersion).replace('%%WORLD%%',world)
+html=html.replace('%%CSS%%',css).replace('%%COUNTRIES%%',countries).replace('%%LAB_MODULE%%',lab).replace('%%INTEL_MODULE%%',intel).replace('%%EVENTS_MODULE%%',events).replace('%%TACTICS_MODULE%%',tactics).replace('%%BALANCE_MODULE%%',balance).replace('%%ENGINE%%',engine).replace('%%PERSISTENCE_MODULE%%',persistence).replace('%%AUTOSAVE_COORD_MODULE%%',autosave_coord).replace('%%GUIDE_MODULE%%',guide).replace('%%OUTCOME_MODULE%%',outcome).replace('%%IMMERSION_MODULE%%',immersion).replace('%%AUDIO_PLAYER_MODULE%%',audio_player).replace('%%WORLD%%',world)
 out=root/'preview-offline.html';out.write_text(html,encoding='utf-8')
 print(out, out.stat().st_size,'bytes')
