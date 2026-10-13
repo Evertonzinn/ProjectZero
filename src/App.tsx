@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { readSave, writeSave, parseGameJson, MAX_IMPORT_BYTES } from './engine/persistence';
+import { AUTOSAVE_OWNER_KEY, coordinatedAutosave, newAutosaveSessionId, parseAutosaveOwner } from './engine/autosaveCoordinator';
 import type { SaveSlot, StoragePort } from './engine/persistence';
 import type { ReactNode } from 'react';
 import { WorldMap } from './components/WorldMap';
@@ -54,6 +55,8 @@ function Icon({name}:{name:'globe'|'pause'|'play'|'step'|'save'|'reset'|'upload'
 export default function App() {
   const [game,setGame]=useState<GameState>(()=>createGame('BRA',nowSeed(),DEFAULT_MODE));
   const gameRef=useRef(game); gameRef.current=game;
+  const autosaveSession=useRef(newAutosaveSessionId());
+  const autosaveInFlight=useRef(false);
   const importRef=useRef<HTMLInputElement>(null);
   const [selected,setSelected]=useState('BRA');
   const [playing,setPlaying]=useState(false);
@@ -62,17 +65,28 @@ export default function App() {
   const [autosaveFailure,setAutosaveFailure]=useState<string|null>(null);
   const [lastAutosave,setLastAutosave]=useState<{seed:number;day:number}|null>(null);
   // Erros de autosave não podem ser escondidos por notificações transitórias.
-  const attemptAutosave=useCallback((snapshot:GameState)=>{
-    const result=writeSave(gameStorage(),'automatico',snapshot);
-    if(result.status==='ok'){
-      setLastAutosave({seed:snapshot.seed,day:snapshot.day});
-      setAutosaveFailure(null);
-    }else{
-      setAutosaveFailure(result.status==='invalid'
-        ? 'O estado desta partida não pôde ser validado para o autosave.'
-        : 'O navegador não conseguiu gravar o autosave (armazenamento bloqueado ou cheio).');
-    }
-    return result;
+  const [autosaveConflict,setAutosaveConflict]=useState(false);
+  const attemptAutosave=useCallback(async(snapshot:GameState,takeover=false)=>{
+    if(snapshot.phase==='setup'||snapshot.day===0||autosaveInFlight.current)return;
+    autosaveInFlight.current=true;
+    try {
+      const result=await coordinatedAutosave(gameStorage(),snapshot,autosaveSession.current,takeover);
+      if(result.status==='ok'){
+        setLastAutosave({seed:snapshot.seed,day:snapshot.day});
+        setAutosaveFailure(null);
+        setAutosaveConflict(false);
+      }else{
+        const conflict=result.status==='conflict';
+        setAutosaveConflict(conflict);
+        if(conflict)setPlaying(false);
+        setAutosaveFailure(conflict
+          ? 'Outra aba controla o autosave. Esta aba foi pausada para proteger o checkpoint existente.'
+          : result.status==='invalid'
+            ? 'O estado desta partida não pôde ser validado para o autosave.'
+            : 'O navegador não conseguiu gravar o autosave (armazenamento bloqueado ou cheio).');
+      }
+      return result;
+    }finally{autosaveInFlight.current=false;}
   },[]);
   const {sound,motion,systemReduced,toggleSound,toggleMotion,cue}=useImmersion();
   const previousGame=useRef<GameState|null>(null);
@@ -166,8 +180,8 @@ export default function App() {
   useEffect(()=>{
     if(game.phase==='setup' || game.day===0)return;
     // Captura ciclos de decisão inclusive quando a simulação está acelerada.
-    if(game.day%10!==0 && game.phase==='running')return;
-    const task=window.setTimeout(()=>attemptAutosave(game),120);
+    if(game.day!==1 && game.day%10!==0 && game.phase==='running')return;
+    const task=window.setTimeout(()=>{void attemptAutosave(game);},120);
     return ()=>window.clearTimeout(task);
   },[game,attemptAutosave]);
   useEffect(()=>{
@@ -177,6 +191,28 @@ export default function App() {
     document.addEventListener('visibilitychange',visibility);
     return ()=>{window.removeEventListener('pagehide',persist);document.removeEventListener('visibilitychange',visibility);};
   },[attemptAutosave]);
+  // Heartbeat periódico: a aba ativa conserva a concessão enquanto está aberta.
+  useEffect(()=>{
+    const timer=window.setInterval(()=>{
+      const current=gameRef.current;
+      if(current.day>0 && current.phase!=='setup')void attemptAutosave(current);
+    },15000);
+    return ()=>window.clearInterval(timer);
+  },[attemptAutosave]);
+  // Um takeover em outra aba pausa esta sessão sem alterar os saves.
+  useEffect(()=>{
+    const handleStorage=(event:StorageEvent)=>{
+      if(event.key!==AUTOSAVE_OWNER_KEY)return;
+      const owner=parseAutosaveOwner(event.newValue);
+      if(owner && owner.owner!==autosaveSession.current && owner.expiresAt>Date.now()){
+        setPlaying(false);
+        setAutosaveConflict(true);
+        setAutosaveFailure('Outra aba assumiu o autosave. Esta sessão foi pausada para proteger o progresso.');
+      }
+    };
+    window.addEventListener('storage',handleStorage);
+    return ()=>window.removeEventListener('storage',handleStorage);
+  },[]);
   const save=()=>{
     const result=writeSave(gameStorage(),'manual',game);
     setNotice(result.status==='ok'?'Save manual gravado. Cópia anterior preservada quando existente.':
@@ -279,7 +315,7 @@ export default function App() {
               <div className="speed-group" role="group" aria-label="Velocidade da simulação">{([1,5,20] as const).map(n=><button key={n} className={speed===n?'active':''} onClick={()=>setSpeed(n)} type="button">{n}×</button>)}</div>
             </div>
             {notice&&<div className="notification" role="status">{notice}</div>}
-            {autosaveFailure&&<div className="autosave-alert" role="alert"><div><strong>Autosave não confirmado</strong><p>{autosaveFailure} A partida continua jogável, mas o progresso recente pode não estar protegido.</p><small>{lastAutosave?.seed===game.seed?`Última gravação confirmada nesta aba: dia ${lastAutosave.day}.`:'Nenhuma gravação automática confirmada nesta sessão.'}</small></div><div className="autosave-actions"><button type="button" disabled={game.phase==='setup'||game.day===0} onClick={()=>attemptAutosave(game)}>TENTAR NOVAMENTE</button><button type="button" onClick={exportSave}>EXPORTAR JSON</button></div></div>}
+            {autosaveFailure&&<div className="autosave-alert" role="alert"><div><strong>Autosave não confirmado</strong><p>{autosaveFailure} A partida continua jogável, mas o progresso recente pode não estar protegido.</p><small>{lastAutosave?.seed===game.seed?`Última gravação confirmada nesta aba: dia ${lastAutosave.day}.`:'Nenhuma gravação automática confirmada nesta sessão.'}</small></div><div className="autosave-actions"><button type="button" disabled={game.phase==='setup'||game.day===0} onClick={()=>{void attemptAutosave(game);}}>TENTAR NOVAMENTE</button>{autosaveConflict&&<button type="button" disabled={game.phase==='setup'||game.day===0} onClick={()=>{if(window.confirm('Outra aba está usando o autosave. Assumir nesta aba pode substituir o checkpoint anterior. Exporte o progresso antes se quiser preservá-lo. Continuar?'))void attemptAutosave(game,true);}}>ASSUMIR NESTA ABA</button>}<button type="button" onClick={exportSave}>EXPORTAR JSON</button></div></div>}
             {moment&&<div className={`immersion-moment moment-${moment.cue}`} key={`${moment.day}-${moment.cue}`} role="status" aria-live="polite"><span className="moment-icon" aria-hidden="true">{moment.cue==='event'?'◈':moment.cue==='evolution'?'✦':'◆'}</span><div><strong>{moment.title}</strong><small>{moment.detail}</small></div><span className="moment-day">DIA {moment.day}</span></div>}
           </div>
           <div className="bottom-panels">
