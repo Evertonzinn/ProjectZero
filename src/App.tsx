@@ -59,7 +59,7 @@ export default function App() {
   const [playing,setPlaying]=useState(false);
   const [speed,setSpeed]=useState<1|5|20>(1);
   const [notice,setNotice]=useState('');
-  const {sound,motion,motionPreference,systemReduced,toggleSound,toggleMotion,cue}=useImmersion();
+  const {sound,motion,systemReduced,toggleSound,toggleMotion,cue}=useImmersion();
   const previousGame=useRef<GameState|null>(null);
   const [moment,setMoment]=useState<Moment|null>(null);
   const [labOpen,setLabOpen]=useState(false);
