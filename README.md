@@ -43,6 +43,15 @@ Abra `http://192.168.0.111:5173` quando o Vite estiver em execução na máquina
 - `GameState` v7, seed, formato de exportação e slots manual/backup/automático **não foram alterados**. O save manual pode continuar a ser exportado como cópia de segurança.
 - Teste manual recomendado: abrir duas abas na mesma origem HTTPS, avançar na primeira, confirmar conflito na segunda, assumir explicitamente na segunda e verificar que a primeira para de gravar. Repetir no Firefox e Chromium, inclusive com a aba original fechada até a concessão expirar.
 
+## Diagnóstico de som e desbloqueio (PZ-04)
+
+- O botão **♪ SOM OFF / ON** habilita a preferência; ao ativar, o jogo solicita a retomada do `AudioContext` diretamente a partir do clique e **espera a conclusão de `resume()` antes de agendar qualquer tom**.
+- Se a opção continuar marcada **ON** após recarregar, é necessário clicar em **♪ TESTAR SOM** para desbloquear o contexto novo. O navegador pode bloquear a retomada em páginas sem ativação do usuário.
+- O status mostra **TESTE O ÁUDIO**, **SINAL ENVIADO**, **ÁUDIO BLOQUEADO** ou **ÁUDIO INDISPONÍVEL**. *Sinal enviado* significa somente que os tons foram agendados pelo Web Audio; não comprova volume do sistema, saída de áudio conectada ou som perceptível.
+- Sons são **sintetizados localmente**, sem música nem arquivos licenciados de terceiros. Volumes e duração foram elevados moderadamente para teste. A preferência é independente dos saves.
+- No Debian: abra a aplicação no Firefox/Chromium, clique `SOM ON`, depois `TESTAR SOM`, verifique a saída de áudio do sistema e o status. Recarregue com som ativado e repita `TESTAR SOM`. Faça a mesma prova na prévia offline e em uma implantação HTTPS.
+- A suíte `npm run test:quality` agora cobre API ausente, estado suspenso, retomada assíncrona, falhas de `resume()`, reativação após recarga e agendamento após desbloqueio. **Ainda é necessária validação auditiva real** antes de fechar PZ-04.
+
 ## Testes e limites conhecidos
 
 - `npm run test:quality` inclui testes existentes do motor, bots, persistência e novos testes do feedback de imersão.
