@@ -35,6 +35,14 @@ Abra `http://192.168.0.111:5173` quando o Vite estiver em execução na máquina
 5. Salve, exporte e importe a partida, verifique que o estado e os resultados não mudam ao ligar/desligar som e animações.
 6. Reabra o jogo no celular e use os mesmos controles, sem perder acesso aos controles de recuperação.
 
+## Proteção de autosave em múltiplas abas (PZ-03)
+
+- Cada aba aberta recebe um ID de sessão efêmero. A concessão de escrita automática fica em `project-zero-autosave-owner-v011`, com expiração após 45 segundos e renovação periódica a cada 15 segundos, enquanto houver partida ativa.
+- Se outra aba detiver a concessão, o jogo pausa a simulação, mostra um alerta persistente e **não grava** o autosave. O jogador pode aguardar a concessão expirar, fechar a aba antiga ou escolher **ASSUMIR NESTA ABA**, após confirmação explícita. A aba antiga recebe aviso de mudança via evento `storage`.
+- Quando a Web Locks API está disponível, o ciclo ler/conferir/gravar é serializado entre abas da mesma origem. **Em HTTP LAN ou navegadores sem Web Locks, a concessão reduz colisões, mas não garante atomicidade**. Para beta público com garantias mais fortes, testar em hospedagem HTTPS e exigir suporte à API ou oferecer fallback com armazenamento transacional.
+- `GameState` v7, seed, formato de exportação e slots manual/backup/automático **não foram alterados**. O save manual pode continuar a ser exportado como cópia de segurança.
+- Teste manual recomendado: abrir duas abas na mesma origem HTTPS, avançar na primeira, confirmar conflito na segunda, assumir explicitamente na segunda e verificar que a primeira para de gravar. Repetir no Firefox e Chromium, inclusive com a aba original fechada até a concessão expirar.
+
 ## Testes e limites conhecidos
 
 - `npm run test:quality` inclui testes existentes do motor, bots, persistência e novos testes do feedback de imersão.
