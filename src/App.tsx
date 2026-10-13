@@ -3,6 +3,9 @@ import { readSave, writeSave, parseGameJson, MAX_IMPORT_BYTES } from './engine/p
 import type { SaveSlot, StoragePort } from './engine/persistence';
 import type { ReactNode } from 'react';
 import { WorldMap } from './components/WorldMap';
+import { useImmersion } from './components/useImmersion';
+import { deriveMoment } from './engine/immersion';
+import type { Moment } from './engine/immersion';
 import { TrendChart } from './components/TrendChart';
 import { Laboratory } from './components/Laboratory';
 import { GovernmentDetail, WorldIntelligence } from './components/WorldIntelligence';
@@ -56,6 +59,9 @@ export default function App() {
   const [playing,setPlaying]=useState(false);
   const [speed,setSpeed]=useState<1|5|20>(1);
   const [notice,setNotice]=useState('');
+  const {sound,motion,motionPreference,systemReduced,toggleSound,toggleMotion,cue}=useImmersion();
+  const previousGame=useRef<GameState|null>(null);
+  const [moment,setMoment]=useState<Moment|null>(null);
   const [labOpen,setLabOpen]=useState(false);
   const [tourOpen,setTourOpen]=useState(()=>{try{return localStorage.getItem(GUIDE_KEY)!=='complete';}catch{return true;}});
   const [decisionFeedback,setDecisionFeedback]=useState('');
@@ -72,14 +78,27 @@ export default function App() {
   const guidance=getGuidance(game,selected);
   const closeTour=()=>{setTourOpen(false);try{localStorage.setItem(GUIDE_KEY,'complete');}catch{/* O tutorial funciona sem armazenamento */}};
   const guidedAction=()=>{if(guidance.action==='lab')openLab();else if(guidance.action==='start')begin();else if(guidance.action==='outcome')setOutcomeOpen(true);};
-  const purchase=(id:UpgradeId)=>{const feedback=upgradeFeedback(game,id);if(!feedback)return;setGame(buyUpgrade(game,id));setDecisionFeedback(feedback);setNotice(feedback);};
-  const useTactic=(id:TacticId,countryId:string)=>{const next=applyTactic(game,id,countryId);const feedback=tacticFeedback(game,next,id,countryId);if(!feedback)return;setGame(next);setDecisionFeedback(feedback);setNotice(feedback);};
+  const purchase=(id:UpgradeId)=>{const feedback=upgradeFeedback(game,id);if(!feedback)return;setGame(buyUpgrade(game,id));setDecisionFeedback(feedback);setNotice(feedback);cue('upgrade',true);};
+  const useTactic=(id:TacticId,countryId:string)=>{const next=applyTactic(game,id,countryId);const feedback=tacticFeedback(game,next,id,countryId);if(!feedback)return;setGame(next);setDecisionFeedback(feedback);setNotice(feedback);cue('tactic',true);};
 
   useEffect(()=>{
     if(!playing||game.phase!=='running')return;
     const timer=window.setInterval(()=>setGame(g=>advanceDay(g)),speed===1?850:speed===5?170:50);
     return ()=>window.clearInterval(timer);
   },[playing,speed,game.phase]);
+  useEffect(()=>{
+    const before=previousGame.current;
+    previousGame.current=game;
+    if(!before)return;
+    const newMoment=deriveMoment(before,game);
+    if(newMoment){setMoment(newMoment);cue(newMoment.cue);}
+    else if(before.seed!==game.seed || game.day<before.day){setMoment(null);}
+  },[game,cue]);
+  useEffect(()=>{
+    if(!moment)return;
+    const timeout=window.setTimeout(()=>setMoment(null),6000);
+    return ()=>window.clearTimeout(timeout);
+  },[moment]);
   useEffect(()=>{
     if(ended){setPlaying(false);setOutcomeOpen(true);}
   },[ended]);
@@ -104,6 +123,7 @@ export default function App() {
     setGame(current=>startGame(current));
     setPlaying(true);
     setNotice('Simulação iniciada.');
+    cue('start',true);
   };
   const reset=()=>{
     if(started && !window.confirm('Reiniciar a simulação? O progresso não salvo será perdido.'))return;
@@ -178,11 +198,11 @@ export default function App() {
   };
   const news=game.news.filter(item=>newsTab==='all'||item.category===newsTab).slice(0,6);
 
-  return <div className="app">
+  return <div className={`app immersion-root ${motion?'effects-on':'effects-off'}`}>
     <header className="topbar">
       <div className="brand"><div className="brand-mark"><Icon name="globe"/></div><div className="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div>
-      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.10.0</span></span></div>
-      <div className="topright"><button type="button" className="help-button" onClick={()=>{setPlaying(false);setTourOpen(true);}} aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span className="server-dot"/><span>SIMULAÇÃO LOCAL</span><span className="top-date">SEED #{game.seed}</span></div>
+      <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.11.0</span></span></div>
+      <div className="topright"><div className="immersion-settings" role="group" aria-label="Preferências de imersão"><button type="button" className="immersion-toggle" aria-pressed={sound} onClick={toggleSound} title={sound?'Desligar efeitos sonoros':'Ativar efeitos sonoros (requer clique)'}>{sound?'♪ SOM ON':'♪ SOM OFF'}</button><button type="button" className="immersion-toggle" aria-pressed={motion} onClick={toggleMotion} title={systemReduced?'Movimento reduzido pelo sistema':'Alternar animações'}>{motion?'✦ EFEITOS ON':'✦ EFEITOS OFF'}</button></div><button type="button" className="help-button" onClick={()=>{setPlaying(false);setTourOpen(true);}} aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span className="server-dot"/><span>SIMULAÇÃO LOCAL</span><span className="top-date">SEED #{game.seed}</span></div>
     </header>
 
     <div className="page-body">
@@ -233,7 +253,7 @@ export default function App() {
         </aside>
 
         <main className="mainstage">
-          <WorldMap game={game} selected={selected} onSelect={selectCountry}/>
+          <WorldMap game={game} selected={selected} onSelect={selectCountry} effectsEnabled={motion}/>
           <div className="playback">
             <div className="playback-title"><span>CONTROLE TEMPORAL</span><strong>DIA {String(game.day).padStart(3,'0')}</strong></div>
             <div className="playback-buttons"><button type="button" className="lab-quick" onClick={openLab} title="Abrir laboratório">⬡ LABORATÓRIO {game.agent.points>0?`· ${game.agent.points} PT`:""}</button>
@@ -244,6 +264,7 @@ export default function App() {
               <div className="speed-group" role="group" aria-label="Velocidade da simulação">{([1,5,20] as const).map(n=><button key={n} className={speed===n?'active':''} onClick={()=>setSpeed(n)} type="button">{n}×</button>)}</div>
             </div>
             {notice&&<div className="notification" role="status">{notice}</div>}
+            {moment&&<div className={`immersion-moment moment-${moment.cue}`} key={`${moment.day}-${moment.cue}`} role="status" aria-live="polite"><span className="moment-icon" aria-hidden="true">{moment.cue==='event'?'◈':moment.cue==='evolution'?'✦':'◆'}</span><div><strong>{moment.title}</strong><small>{moment.detail}</small></div><span className="moment-day">DIA {moment.day}</span></div>}
           </div>
           <div className="bottom-panels">
             <TrendChart history={game.history}/>
@@ -277,7 +298,7 @@ export default function App() {
           <div className="model-note"><div className="model-title">MODELO DE MUNDO</div><p>Os 18 territórios são conectados por uma malha abstrata. Clique no mapa para inspecionar cada país.</p><div className="model-stat">18 <span>NAÇÕES</span> <span className="slash">/</span> 01 <span>CENÁRIO</span></div></div>
         </aside>
       </div>
-      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.10 — ESTABILIDADE E QUALIDADE</span></footer>
+      <footer className="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO TOTALMENTE FICTÍCIA · NÃO REPRESENTA PREVISÕES REAIS</span><span>V0.11 — IMERSÃO E ACABAMENTO</span></footer>
     </div>
     {tourOpen&&<Onboarding onClose={closeTour} onLaboratory={openLab}/>}
     {outcomeOpen&&ended&&<GameOutcome game={game} previous={previousRun} onClose={()=>setOutcomeOpen(false)} onRepeat={repeat} onNew={newAfterOutcome}/>}
