@@ -13,9 +13,11 @@ balance=(root/'.engine-build/engine/balance.js').read_text().replace('export ','
 outcome=(root/'.engine-build/engine/outcome.js').read_text().replace('export ','')
 guide=(root/'.engine-build/engine/guide.js').read_text().replace('export ','')
 persistence=(root/'.engine-build/engine/persistence.js').read_text().replace('export ','')
+autosave_coord=(root/'.engine-build/engine/autosaveCoordinator.js').read_text().replace('export ','')
 immersion=(root/'.engine-build/engine/immersion.js').read_text().replace('export ','')
 immersion=re.sub(r'^import .*?;\n','',immersion,flags=re.M)
 persistence=re.sub(r'^import .*?;\n','',persistence,flags=re.M)
+autosave_coord=re.sub(r'^import .*?;\n','',autosave_coord,flags=re.M)
 guide=re.sub(r'^import .*?;\n','',guide,flags=re.M)
 outcome=re.sub(r'^import .*?;\n','',outcome,flags=re.M)
 engine=re.sub(r'^import .*?;\n','',engine,flags=re.M)
@@ -81,6 +83,7 @@ const worldData=%%WORLD%%;
 %%BALANCE_MODULE%%
 %%ENGINE%%
 %%PERSISTENCE_MODULE%%
+%%AUTOSAVE_COORD_MODULE%%
 %%GUIDE_MODULE%%
 %%OUTCOME_MODULE%%
 %%IMMERSION_MODULE%%
@@ -248,26 +251,45 @@ $('importInput').onchange=async e=>{
  }catch{message('Não foi possível ler o arquivo.');}
 };
 let lastAutosaveDay=null;
+let previewAutosaveBusy=false;
+const previewSession=newAutosaveSessionId();
 const autosaveAlert=document.createElement('div');
 autosaveAlert.className='autosave-alert';
 autosaveAlert.setAttribute('role','alert');
 autosaveAlert.style.display='none';
-autosaveAlert.innerHTML='<div><strong>Autosave não confirmado</strong><p id="autosaveErrorText"></p><small id="autosaveLastOk"></small></div><div class="autosave-actions"><button type="button" id="autosaveRetry">TENTAR NOVAMENTE</button><button type="button" id="autosaveExport">EXPORTAR JSON</button></div>';
+autosaveAlert.innerHTML='<div><strong>Autosave não confirmado</strong><p id="autosaveErrorText"></p><small id="autosaveLastOk"></small></div><div class="autosave-actions"><button type="button" id="autosaveRetry">TENTAR NOVAMENTE</button><button type="button" id="autosaveTakeover" style="display:none">ASSUMIR NESTA ABA</button><button type="button" id="autosaveExport">EXPORTAR JSON</button></div>';
 $('notice').insertAdjacentElement('afterend',autosaveAlert);
-$('autosaveRetry').onclick=()=>autosave();
+$('autosaveRetry').onclick=()=>{void autosave();};
+$('autosaveTakeover').onclick=()=>{if(confirm('Outra aba controla o autosave. Assumir aqui pode sobrescrever o checkpoint anterior. Exporte seu progresso antes, se desejar preservá-lo. Continuar?'))void autosave(true);};
 $('autosaveExport').onclick=()=>$('exportBtn').click();
-function autosave(){
- if(game.day===0||game.phase==='setup')return;
- const result=writeSave(gameStorage(),'automatico',game);
- if(result.status==='ok'){
-   lastAutosaveDay={seed:game.seed,day:game.day};
-   autosaveAlert.style.display='none';
-   return;
- }
- $('autosaveErrorText').textContent=(result.status==='invalid'?'O estado da partida não pôde ser validado.':'Armazenamento bloqueado ou cheio.')+' O progresso recente pode não estar protegido.';
+function autosaveWarning(message,conflict){
+ if(conflict){playing=false;restartTimer();}
+ $('autosaveErrorText').textContent=message+' O progresso recente pode não estar protegido.';
  $('autosaveLastOk').textContent=lastAutosaveDay?.seed===game.seed?'Última gravação confirmada nesta aba: dia '+lastAutosaveDay.day+'.':'Nenhuma gravação automática confirmada nesta sessão.';
+ $('autosaveTakeover').style.display=conflict?'inline-flex':'none';
  autosaveAlert.style.display='flex';
 }
+async function autosave(takeover=false){
+ if(game.day===0||game.phase==='setup'||previewAutosaveBusy)return;
+ previewAutosaveBusy=true;
+ try{
+   const result=await coordinatedAutosave(gameStorage(),game,previewSession,takeover);
+   if(result.status==='ok'){
+     lastAutosaveDay={seed:game.seed,day:game.day};
+     autosaveAlert.style.display='none';
+     return;
+   }
+   if(result.status==='conflict')autosaveWarning('Outra aba controla o autosave. Esta sessão foi pausada.',true);
+   else autosaveWarning(result.status==='invalid'?'O estado da partida não pôde ser validado.':'Armazenamento bloqueado ou cheio.',false);
+ }finally{previewAutosaveBusy=false;}
+}
+setInterval(()=>{if(game.day>0&&game.phase!=='setup')void autosave();},15000);
+window.addEventListener('storage',e=>{
+ if(e.key!==AUTOSAVE_OWNER_KEY)return;
+ const owner=parseAutosaveOwner(e.newValue);
+ if(owner&&owner.owner!==previewSession&&owner.expiresAt>Date.now())
+   autosaveWarning('Outra aba assumiu o autosave. Esta sessão foi pausada.',true);
+});
 window.addEventListener('pagehide',autosave);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autosave();});
 $('originSelect').onchange=e=>selectCountry(e.target.value);
@@ -372,6 +394,6 @@ document.addEventListener('keydown',e=>{
 });
 initMap();render();try{if(localStorage.getItem(GUIDE_KEY)!=='complete')openTour();}catch{openTour();}
 </script></body></html>'''
-html=html.replace('%%CSS%%',css).replace('%%COUNTRIES%%',countries).replace('%%LAB_MODULE%%',lab).replace('%%INTEL_MODULE%%',intel).replace('%%EVENTS_MODULE%%',events).replace('%%TACTICS_MODULE%%',tactics).replace('%%BALANCE_MODULE%%',balance).replace('%%ENGINE%%',engine).replace('%%PERSISTENCE_MODULE%%',persistence).replace('%%GUIDE_MODULE%%',guide).replace('%%OUTCOME_MODULE%%',outcome).replace('%%IMMERSION_MODULE%%',immersion).replace('%%WORLD%%',world)
+html=html.replace('%%CSS%%',css).replace('%%COUNTRIES%%',countries).replace('%%LAB_MODULE%%',lab).replace('%%INTEL_MODULE%%',intel).replace('%%EVENTS_MODULE%%',events).replace('%%TACTICS_MODULE%%',tactics).replace('%%BALANCE_MODULE%%',balance).replace('%%ENGINE%%',engine).replace('%%PERSISTENCE_MODULE%%',persistence).replace('%%AUTOSAVE_COORD_MODULE%%',autosave_coord).replace('%%GUIDE_MODULE%%',guide).replace('%%OUTCOME_MODULE%%',outcome).replace('%%IMMERSION_MODULE%%',immersion).replace('%%WORLD%%',world)
 out=root/'preview-offline.html';out.write_text(html,encoding='utf-8')
 print(out, out.stat().st_size,'bytes')
