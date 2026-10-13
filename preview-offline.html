@@ -169,8 +169,12 @@ button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-v
 .autosave-alert strong{display:block;font-size:12px}.autosave-alert p{margin:6px 0;font-size:12px;line-height:1.5;color:#f0d8ae}
 .autosave-alert small{display:block;color:#e3c498;font-size:11px}.autosave-actions{display:flex;flex-wrap:wrap;gap:8px}
 .autosave-actions button{border:1px solid #c69f69;border-radius:6px;background:#483923;color:#f6e7c7;font-size:10px;font-weight:800;min-height:44px;padding:9px 12px;cursor:pointer}
+
+/* PZ-04 — controles de diagnóstico do AudioContext. */
+.audio-test{border-color:#6e915b;color:#d0f0b8}.audio-status{display:inline-block;color:#b7cbd1;font-size:9px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+@media(max-width:730px){.topbar .topright{flex-wrap:wrap}.topbar .immersion-settings{width:100%;flex-wrap:wrap;justify-content:flex-start}.topbar .immersion-toggle{min-height:36px}.audio-status{flex-basis:100%;line-height:1.2}}
 </style></head>
-<body><div class="app immersion-root effects-on" id="previewApp"><header class="topbar"><div class="brand"><div class="brand-mark">◎</div><div class="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div><div class="topcenter"><span class="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span class="header-separator"></span><span class="build-label">ALPHA <span>0.11.0</span></span></div><div class="topright"><div class="immersion-settings" role="group" aria-label="Preferências de imersão"><button type="button" id="soundToggle" class="immersion-toggle" aria-pressed="false" title="Alternar efeitos sonoros">♪ SOM OFF</button><button type="button" id="motionToggle" class="immersion-toggle" aria-pressed="true" title="Alternar animações">✦ EFEITOS ON</button></div><button type="button" id="helpBtn" class="help-button" aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span class="server-dot"></span><span class="preview-local-status">EXECUÇÃO LOCAL</span></div></header>
+<body><div class="app immersion-root effects-on" id="previewApp"><header class="topbar"><div class="brand"><div class="brand-mark">◎</div><div class="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div><div class="topcenter"><span class="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span class="header-separator"></span><span class="build-label">ALPHA <span>0.11.0</span></span></div><div class="topright"><div class="immersion-settings" role="group" aria-label="Preferências de imersão"><button type="button" id="soundToggle" class="immersion-toggle" aria-pressed="false" title="Alternar efeitos sonoros">♪ SOM OFF</button><button type="button" id="soundTest" class="immersion-toggle audio-test" title="Testar som e desbloquear áudio após recarregar" hidden>♪ TESTAR SOM</button><span id="soundStatus" class="audio-status" role="status" aria-live="polite" hidden></span><button type="button" id="motionToggle" class="immersion-toggle" aria-pressed="true" title="Alternar animações">✦ EFEITOS ON</button></div><button type="button" id="helpBtn" class="help-button" aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span class="server-dot"></span><span class="preview-local-status">EXECUÇÃO LOCAL</span></div></header>
 <div class="page-body"><div class="preview-hint"><b>PRÉVIA INTERATIVA OFFLINE</b> — Clique em um país, escolha a origem e pressione INICIAR. Este arquivo funciona sem internet, sem servidor e sem npm. Governos decidem de forma autônoma; acompanhe as crises, a corrida científica e os acontecimentos com causas e efeitos persistentes. O projeto React/TypeScript está no ZIP.</div>
 <div class="eyebrow-row"><span>PAINEL DE OPERAÇÕES <b>/</b> MAPA GLOBAL</span><span class="scenario-id">CENÁRIO <b>ZERO / 001</b></span></div>
 <section class="headline"><div><h1>O mundo é seu tabuleiro<span class="headline-dot">.</span></h1><p>Dezoito nações, reações globais e consequências em cadeia.</p></div><div class="day-highlight"><span>DIA</span><strong id="headingDay">000</strong><div class="status-meta" id="headingStatus">AGUARDANDO</div></div></section>
@@ -1014,6 +1018,79 @@ function deriveMoment(before, after) {
     return null;
 }
 
+const SOUNDS = {
+    start: { notes: [330, 440], duration: .19, wave: 'sine' },
+    upgrade: { notes: [440, 587, 740], duration: .16, wave: 'sine' },
+    tactic: { notes: [392, 440], duration: .17, wave: 'triangle' },
+    alert: { notes: [294, 220], duration: .20, wave: 'triangle' },
+    event: { notes: [350, 466], duration: .18, wave: 'sine' },
+    evolution: { notes: [392, 523], duration: .18, wave: 'sine' },
+    victory: { notes: [440, 554, 659], duration: .22, wave: 'sine' },
+    contained: { notes: [370, 330, 262], duration: .22, wave: 'sine' },
+};
+/** O construtor é injetável para testar o comportamento sem um navegador real. */
+function contextIsRunning(context) { return context.state === 'running'; }
+function createAudioPlayer(getConstructor) {
+    let context = null;
+    let closed = false;
+    return {
+        async play(kind, gesture = false) {
+            if (closed)
+                return 'unavailable';
+            try {
+                // O navegador pode bloquear a criação ou retomada sem gesto do usuário.
+                if (!context || context.state === 'closed') {
+                    if (!gesture)
+                        return 'blocked';
+                    const Constructor = getConstructor();
+                    if (!Constructor)
+                        return 'unavailable';
+                    context = new Constructor();
+                }
+                const audio = context;
+                if (audio.state !== 'running') {
+                    if (!gesture)
+                        return 'blocked';
+                    // Invocado diretamente no handler do clique, antes de qualquer await.
+                    await audio.resume();
+                    if (!contextIsRunning(audio))
+                        return 'blocked';
+                }
+                const spec = SOUNDS[kind];
+                const begin = audio.currentTime + 0.035;
+                for (let i = 0; i < spec.notes.length; i++) {
+                    const start = begin + i * spec.duration * 0.9;
+                    const oscillator = audio.createOscillator();
+                    const gain = audio.createGain();
+                    oscillator.type = spec.wave;
+                    oscillator.frequency.value = spec.notes[i];
+                    gain.gain.setValueAtTime(0.0001, start);
+                    gain.gain.exponentialRampToValueAtTime(0.085, start + 0.025);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, start + spec.duration);
+                    oscillator.connect(gain);
+                    gain.connect(audio.destination);
+                    oscillator.start(start);
+                    oscillator.stop(start + spec.duration + 0.015);
+                }
+                // Agendado não implica som perceptível: dispositivo/volume exigem teste manual.
+                return 'scheduled';
+            }
+            catch {
+                return 'error';
+            }
+        },
+        getState() {
+            return context?.state ?? 'uninitialized';
+        },
+        close() {
+            closed = true;
+            const old = context;
+            context = null;
+            if (old && old.state !== 'closed')
+                void old.close().catch(() => { });
+        },
+    };
+}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const fmt=n=>new Intl.NumberFormat('pt-BR').format(n);
@@ -1027,29 +1104,30 @@ let guideAction='lab',decisionMessage='',tourStep=0,tourVisible=false;
 const GUIDE_KEY='project-zero-guide-v08';
 let immersionPrefs={...DEFAULT_IMMERSION};try{immersionPrefs=parsePreferences(window.localStorage.getItem(IMMERSION_KEY));}catch{}
 const mediaMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)');
-let systemReduced=!!mediaMotion?.matches, audioContext=null,lastSound=0,momentTimer=null,previousForMoment=game;
+let systemReduced=!!mediaMotion?.matches,lastSound=0,momentTimer=null,previousForMoment=game;
+const audioPlayer=createAudioPlayer(()=>window.AudioContext||window.webkitAudioContext);
+let audioStatus=immersionPrefs.sound?'needs-click':'off';
 function syncImmersion(){
  const moving=effectiveMotion(immersionPrefs.motion,systemReduced);
  $('previewApp').classList.toggle('effects-off',!moving);
  $('previewApp').classList.toggle('effects-on',moving);
  $('soundToggle').textContent=immersionPrefs.sound?'♪ SOM ON':'♪ SOM OFF';
  $('soundToggle').setAttribute('aria-pressed',String(immersionPrefs.sound));
+ $('soundTest').hidden=!immersionPrefs.sound;
+ $('soundStatus').hidden=!immersionPrefs.sound;
+ $('soundStatus').textContent=audioStatus==='ready'?'SINAL ENVIADO':audioStatus==='needs-click'?'TESTE O ÁUDIO':audioStatus==='blocked'?'ÁUDIO BLOQUEADO':audioStatus==='unavailable'?'ÁUDIO INDISPONÍVEL':'';
  $('motionToggle').textContent=moving?'✦ EFEITOS ON':'✦ EFEITOS OFF';
  $('motionToggle').setAttribute('aria-pressed',String(moving));
  $('motionToggle').title=systemReduced?'Movimento reduzido pelo sistema':'Alternar animações';
 }
 function cueSound(kind,gesture=false){
  if(!immersionPrefs.sound)return;
- const time=Date.now();if(time-lastSound<180&&!gesture)return;lastSound=time;
- try {
-  const Constructor=window.AudioContext||window.webkitAudioContext;
-  if(!Constructor)return;
-  if(!audioContext)audioContext=new Constructor();
-  if(audioContext.state==='suspended') {if(!gesture)return;void audioContext.resume().catch(()=>{});}
-  const tones={start:[330,440],upgrade:[440,587,740],tactic:[392,440],alert:[294,220],event:[350,466],evolution:[392,523],victory:[440,554,659],contained:[370,330,262]};
-  const melody=tones[kind]||tones.event, duration=(kind==='victory'||kind==='contained')?.16:.11;
-  melody.forEach((frequency,i)=>{const t=audioContext.currentTime+.012+i*duration*.82,osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type=kind==='alert'?'triangle':'sine';osc.frequency.value=frequency;gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(.038,t+.018);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);osc.connect(gain);gain.connect(audioContext.destination);osc.start(t);osc.stop(t+duration+.01);});
- }catch{}
+ const now=Date.now();if(now-lastSound<180&&!gesture)return;lastSound=now;
+ void audioPlayer.play(kind,gesture).then(result=>{
+  if(!immersionPrefs.sound)return;
+  audioStatus=result==='scheduled'?'ready':result==='unavailable'?'unavailable':'blocked';
+  syncImmersion();
+ });
 }
 function displayMoment(moment){
  const el=$('momentBanner');
@@ -1063,7 +1141,8 @@ function displayMoment(moment){
  momentTimer=setTimeout(()=>{el.style.display='none';},6000);
  cueSound(moment.cue);
 }
-$('soundToggle').onclick=()=>{immersionPrefs.sound=!immersionPrefs.sound;try{localStorage.setItem(IMMERSION_KEY,JSON.stringify(immersionPrefs));}catch{}syncImmersion();if(immersionPrefs.sound)cueSound('start',true);};
+$('soundToggle').onclick=()=>{immersionPrefs.sound=!immersionPrefs.sound;audioStatus=immersionPrefs.sound?'needs-click':'off';try{localStorage.setItem(IMMERSION_KEY,JSON.stringify(immersionPrefs));}catch{}syncImmersion();if(immersionPrefs.sound)cueSound('start',true);};
+$('soundTest').onclick=()=>cueSound('upgrade',true);
 $('motionToggle').onclick=()=>{immersionPrefs.motion=!immersionPrefs.motion;try{localStorage.setItem(IMMERSION_KEY,JSON.stringify(immersionPrefs));}catch{}syncImmersion();};
 mediaMotion?.addEventListener?.('change',()=>{systemReduced=mediaMotion.matches;syncImmersion();});
 syncImmersion();

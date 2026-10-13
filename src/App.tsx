@@ -88,7 +88,7 @@ export default function App() {
       return result;
     }finally{autosaveInFlight.current=false;}
   },[]);
-  const {sound,motion,systemReduced,toggleSound,toggleMotion,cue}=useImmersion();
+  const {sound,soundStatus,testSound,motion,systemReduced,toggleSound,toggleMotion,cue}=useImmersion();
   const previousGame=useRef<GameState|null>(null);
   const [moment,setMoment]=useState<Moment|null>(null);
   const [labOpen,setLabOpen]=useState(false);
@@ -253,7 +253,7 @@ export default function App() {
     <header className="topbar">
       <div className="brand"><div className="brand-mark"><Icon name="globe"/></div><div className="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div>
       <div className="topcenter"><span className="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span className="header-separator"/><span className="build-label">ALPHA <span>0.11.0</span></span></div>
-      <div className="topright"><div className="immersion-settings" role="group" aria-label="Preferências de imersão"><button type="button" className="immersion-toggle" aria-pressed={sound} onClick={toggleSound} title={sound?'Desligar efeitos sonoros':'Ativar efeitos sonoros (requer clique)'}>{sound?'♪ SOM ON':'♪ SOM OFF'}</button><button type="button" className="immersion-toggle" aria-pressed={motion} onClick={toggleMotion} title={systemReduced?'Movimento reduzido pelo sistema':'Alternar animações'}>{motion?'✦ EFEITOS ON':'✦ EFEITOS OFF'}</button></div><button type="button" className="help-button" onClick={()=>{setPlaying(false);setTourOpen(true);}} aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span className="server-dot"/><span>SIMULAÇÃO LOCAL</span><span className="top-date">SEED #{game.seed}</span></div>
+      <div className="topright"><div className="immersion-settings" role="group" aria-label="Preferências de imersão"><button type="button" className="immersion-toggle" aria-pressed={sound} onClick={toggleSound} title={sound?'Desligar efeitos sonoros':'Ativar efeitos sonoros (requer clique)'}>{sound?'♪ SOM ON':'♪ SOM OFF'}</button>{sound&&<button type="button" className="immersion-toggle audio-test" onClick={testSound} title="Reativar áudio e reproduzir teste de som">♪ TESTAR SOM</button>}<button type="button" className="immersion-toggle" aria-pressed={motion} onClick={toggleMotion} title={systemReduced?'Movimento reduzido pelo sistema':'Alternar animações'}>{motion?'✦ EFEITOS ON':'✦ EFEITOS OFF'}</button>{sound&&<span className="audio-status" role="status" aria-live="polite">{soundStatus==='ready'?'SINAL ENVIADO':soundStatus==='needs-click'?'TESTE O ÁUDIO':soundStatus==='blocked'?'ÁUDIO BLOQUEADO':soundStatus==='unavailable'?'ÁUDIO INDISPONÍVEL':''}</span>}</div><button type="button" className="help-button" onClick={()=>{setPlaying(false);setTourOpen(true);}} aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span className="server-dot"/><span>SIMULAÇÃO LOCAL</span><span className="top-date">SEED #{game.seed}</span></div>
     </header>
 
     <div className="page-body">
