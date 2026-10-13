@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d16"><title>Project Zero — Experiência do Jogador (prévia offline)</title>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d16"><title>Project Zero — Estabilidade e Qualidade (prévia offline)</title>
 <style>:root{font-family:Inter,'Segoe UI',Arial,sans-serif;color:#dbe7eb;background:#080d16;font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}*{box-sizing:border-box}body{margin:0;min-width:320px}button,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.38;cursor:not-allowed}button:focus-visible,select:focus-visible,.country-playable:focus-visible{outline:2px solid #ccfb8a;outline-offset:3px}button,select{transition:background .15s,border-color .15s,color .15s}::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:#2a3d4a;border-radius:9px}
 .app{min-height:100vh;background:radial-gradient(ellipse 95% 23% at 55% -18%,#172738 0,transparent 100%),#080d16}.topbar{height:74px;border-bottom:1px solid #1b2a35;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(18px,3.2vw,64px);background:#0a111b;gap:30px}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:39px;height:39px;border:1px solid #b8ec71;background:#152517;color:#caf58d;border-radius:10px;display:grid;place-items:center;transform:rotate(-7deg)}.brand-mark svg{width:22px;height:22px;transform:rotate(7deg)}.brand-word{display:flex;flex-direction:column;gap:3px;white-space:nowrap}.brand-word strong{font-size:18px;letter-spacing:1.3px;font-weight:850;color:#f1f8f6}.brand-word strong span{color:#b6eb70}.brand-word small{font-size:9px;color:#647a8b;letter-spacing:2px;font-weight:700}.topcenter{display:flex;align-items:center;gap:14px;color:#8ba1ae;font-size:10px;letter-spacing:1.15px}.topcenter b{font-size:11px;font-weight:650;color:#c9d7dc}.top-label,.build-label{color:#6f8492;font-weight:700}.header-separator{height:18px;width:1px;background:#293e4c}.build-label span{color:#c6f18a}.topright{display:flex;align-items:center;gap:9px;font-size:10px;font-weight:700;letter-spacing:1px;color:#9cb2b7;white-space:nowrap}.server-dot,.status-led,.led-dot{width:7px;height:7px;display:inline-block;background:#b3ef75;border-radius:50%;box-shadow:0 0 12px #9fe45c7a}.top-date{color:#546b7a;margin-left:12px;font-size:10px}
 .page-body{max-width:1900px;padding:27px clamp(18px,3.2vw,64px) 24px;margin:auto}.eyebrow-row{display:flex;align-items:center;justify-content:space-between;color:#8295a0;letter-spacing:1.6px;font-size:10px;font-weight:700}.eyebrow-row b{color:#9ccd60}.scenario-id b{margin-left:6px;color:#d4e9b3}.headline{display:flex;align-items:flex-end;justify-content:space-between;margin-top:12px;margin-bottom:25px;gap:18px}.headline h1{font-size:clamp(24px,2.35vw,36px);line-height:1.2;letter-spacing:-.9px;color:#f4f8f6;margin:0 0 9px;font-weight:750}.headline-dot{color:#b8e66c}.headline p{margin:0;color:#8499a6;font-size:12px;line-height:1.5}.day-highlight{display:flex;align-items:center;gap:13px;white-space:nowrap}.day-highlight>span{font-size:10px;letter-spacing:1px;font-weight:750;color:#7e96a5}.day-highlight>strong{font-size:30px;line-height:1;color:#d4f19c;font-family:Consolas,monospace}.status-meta{display:flex;gap:8px;align-items:center;color:#92a0ab;font-size:10px;font-weight:700;letter-spacing:.5px}.status-led{background:#57707b;box-shadow:none;width:6px;height:6px}.status-led.live{background:#b4f777;box-shadow:0 0 9px #a5ed67}
@@ -118,15 +118,28 @@
 @media(max-width:650px){.tour-content{padding:28px 24px 25px;min-height:290px}.tour-top{padding:13px 17px}.tour-actions{padding:14px 16px;justify-content:center}.tour-actions button{flex:1;min-width:120px}.help-button{padding:7px;font-size:9px}}
 @media(prefers-reduced-motion:reduce){.tour-backdrop{backdrop-filter:none}}
 
+/* v0.10 — controle de teclado e arquivo JSON */
+.file-import-hidden{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}
+button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid #c5ef91!important;outline-offset:3px!important}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;scroll-behavior:auto!important}}
+@media(max-width:730px){
+  /* Os controles de recuperação não podem desaparecer em telas estreitas. */
+  .left-sidebar>.panel-heading.secondary{display:flex;grid-row:4;margin-top:0}
+  .left-sidebar>.quick-panel{display:block;grid-row:5}
+  .mainstage{grid-row:3}
+  .right-sidebar{grid-row:6}
+  .quick-panel button{min-height:44px}
+}
+
 .preview-hint{padding:10px 16px;margin-bottom:15px;border:1px solid #395044;color:#d7eaaa;background:#13201b;font-size:11px;line-height:1.5}.preview-hint b{color:#dfff95}.map-overlay{position:absolute;left:16px;bottom:16px;width:290px;max-width:70%;pointer-events:none;border:1px solid #485c45;background:#12202be8;padding:14px;display:grid;gap:6px}.map-overlay>small{font-size:10px;font-weight:750;color:#bfe77e;letter-spacing:1px}.map-overlay>strong{font-size:15px;color:#ecf6eb}.map-overlay>span{font-size:10px;color:#9db3b6}.map-viewport{height:clamp(350px,38vw,570px)}.preview-status{font-size:10px;color:#96adac}.preview-status strong{color:#c8eca3}.country-playable{cursor:pointer}.map-svg-tooltip{position:absolute;top:16px;left:16px;border:1px solid #3b5647;color:#e2f5d7;background:#182b32dd;padding:8px 12px;font-size:12px;font-weight:700;display:none}.radar-btn{height:35px;background:#132332;color:#badab4;border:1px solid #365040;padding:0 12px;font-size:10px;font-weight:750}.radar-btn:hover{background:#284139}.country-metrics{display:grid;gap:12px}.region-box{display:flex;flex-direction:column;gap:6px;border-bottom:1px solid #263845;padding-bottom:12px}.region-box>span{font-size:9px;color:#829aa9;letter-spacing:1px;font-weight:720}.region-box>strong{font-size:21px;color:#ebf5ef}.region-box>strong.hot{color:#f5a487}.attr{margin:10px 0}.attr header{display:flex;justify-content:space-between;color:#a8bdc2;font-size:10px;font-weight:720}.bar-bg{margin-top:7px;height:5px;background:#263946}.bar-progress{height:100%;background:#bce77a}.nation-title{font-size:21px;color:#f0f8f3;margin:7px 0 17px}.nation-title span{font-size:25px}.empty-news{min-height:60px}.chart-container{min-height:160px}.trend-svg{height:145px}.playback-title{display:flex}.news-list{max-height:185px}.quick-panel>button{font-size:12px}.status-summary{margin-bottom:10px;display:flex;justify-content:space-between;color:#97adb4;font-size:10px}.status-summary b{color:#b9e984}.scenario-panel .field-wrap{margin-bottom:13px}.country-attrs{display:block}.right-sidebar .panel-heading{padding:0 14px}@media(max-width:1080px){.right-sidebar .country-panel{display:block}.right-sidebar .country-attrs{display:block}}@media(max-width:730px){.page-body{padding-top:12px}.preview-hint{font-size:10px}.map-viewport{height:215px}.map-overlay{max-width:55%;padding:7px;bottom:7px;left:7px}.map-overlay>strong{font-size:11px}.map-overlay>span{display:none}.playback-title{display:flex}}
 </style></head>
-<body><div class="app"><header class="topbar"><div class="brand"><div class="brand-mark">◎</div><div class="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div><div class="topcenter"><span class="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span class="header-separator"></span><span class="build-label">ALPHA <span>0.9.1</span></span></div><div class="topright"><button type="button" id="helpBtn" class="help-button" aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span class="server-dot"></span>EXECUÇÃO LOCAL</div></header>
+<body><div class="app"><header class="topbar"><div class="brand"><div class="brand-mark">◎</div><div class="brand-word"><strong>PROJECT<span> ZERO</span></strong><small>GLOBAL STRATEGY SIMULATOR</small></div></div><div class="topcenter"><span class="top-label">OPERAÇÃO</span><b>OBSERVATÓRIO MUNDIAL</b><span class="header-separator"></span><span class="build-label">ALPHA <span>0.10.0</span></span></div><div class="topright"><button type="button" id="helpBtn" class="help-button" aria-label="Abrir tutorial de como jogar">? COMO JOGAR</button><span class="server-dot"></span>EXECUÇÃO LOCAL</div></header>
 <div class="page-body"><div class="preview-hint"><b>PRÉVIA INTERATIVA OFFLINE</b> — Clique em um país, escolha a origem e pressione INICIAR. Este arquivo funciona sem internet, sem servidor e sem npm. Governos decidem de forma autônoma; acompanhe as crises, a corrida científica e os acontecimentos com causas e efeitos persistentes. O projeto React/TypeScript está no ZIP.</div>
 <div class="eyebrow-row"><span>PAINEL DE OPERAÇÕES <b>/</b> MAPA GLOBAL</span><span class="scenario-id">CENÁRIO <b>ZERO / 001</b></span></div>
 <section class="headline"><div><h1>O mundo é seu tabuleiro<span class="headline-dot">.</span></h1><p>Dezoito nações, reações globais e consequências em cadeia.</p></div><div class="day-highlight"><span>DIA</span><strong id="headingDay">000</strong><div class="status-meta" id="headingStatus">AGUARDANDO</div></div></section>
 <section class="kpi-row"><div class="kpi"><div class="kpi-heading"><span>POPULAÇÃO SIMULADA</span><span class="kpi-symbol">◈</span></div><strong id="kpiPopulation">—</strong><span class="kpi-foot">18 PAÍSES</span></div><div class="kpi"><div class="kpi-heading"><span>POPULAÇÃO IMPACTADA</span><span class="kpi-symbol orange">◉</span></div><strong id="kpiAffected">0</strong><span class="kpi-foot" id="kpiPct">0% DA POPULAÇÃO</span></div><div class="kpi"><div class="kpi-heading"><span>PAÍSES EM CRISE</span><span class="kpi-symbol blue">◎</span></div><strong id="kpiCountries">00 / 18</strong><span class="kpi-foot">REGIÕES MONITORADAS</span></div><div class="kpi"><div class="kpi-heading"><span>RESPOSTA CIENTÍFICA</span><span class="kpi-symbol green">⬡</span></div><strong id="kpiScience">0%</strong><div class="bar-track"><div class="bar-fill" id="scienceBar" style="width:0%"></div></div></div></section>
 <div class="workspace"><aside class="sidebar left-sidebar"><div class="panel-heading"><span class="heading-square"></span> CONTROLE DO CENÁRIO <span class="panel-number">01</span></div><div class="scenario-panel"><div class="small-label">PROTOCOLO ATUAL</div><div class="scenario-badge"><span class="tiny-glow"></span> ZERO — SIMULAÇÃO</div><p>Defina o território onde o evento fictício começa e acompanhe as consequências.</p><div class="fine-divider"></div><div class="small-label">PAÍS DE ORIGEM</div><label class="field-wrap"><span class="flag" id="selectFlag">🇧🇷</span><select id="originSelect" aria-label="Escolher país de origem"></select><span class="field-chevron">⌄</span></label><div class="small-label">MODO DE JOGO</div><label class="field-wrap mode-field"><select id="modeSelect" aria-label="Dificuldade do cenário"></select><span class="field-chevron">⌄</span></label><p class="mode-hint" id="modeHint"></p><div class="guide-card" id="guideCard" aria-live="polite"><span class="guide-kicker">◈ SEU PRÓXIMO PASSO</span><strong id="guideTitle"></strong><p id="guideDescription"></p><button type="button" id="guideAction"></button></div><div class="seed-row"><span>SEED DO CENÁRIO</span><span id="seedLabel">—</span></div><button id="openLabBtn" type="button" class="lab-launch"><span class="lab-launch-icon">⬡</span><span><strong>LABORATÓRIO ZERO</strong><small id="labLaunchDetail">PROTOCOLO ZERO · 0 MELHORIAS</small></span><span class="lab-launch-arrow">↗</span></button><button id="labAlert" type="button" class="lab-alert lab-alert-button" style="display:none"></button><button id="startBtn" class="primary-btn" type="button">▶ &nbsp; INICIAR SIMULAÇÃO ↗</button><div id="gameEnd" class="outcome-box" style="display:none"></div></div>
-<div class="panel-heading secondary"><span class="heading-square"></span> CONTROLES RÁPIDOS <span class="panel-number">02</span></div><div class="quick-panel"><button type="button" id="saveBtn">◫ &nbsp; Salvar partida</button><button type="button" id="loadBtn">⇧ &nbsp; Carregar partida</button><button type="button" id="resetBtn">↺ &nbsp; Reiniciar cenário</button></div><div class="sidebar-note"><span class="note-mark">!</span><p>Parâmetros abstratos de gameplay. Sem representação de epidemiologia real.</p></div></aside>
+<div class="panel-heading secondary"><span class="heading-square"></span> CONTROLES RÁPIDOS <span class="panel-number">02</span></div><div class="quick-panel"><button type="button" id="saveBtn">◫ &nbsp; Salvar partida</button><button type="button" id="loadBtn">⇧ &nbsp; Carregar partida</button><button type="button" id="recoveryBtn">↶ &nbsp; Recuperar sessão</button><button type="button" id="backupBtn">↶ &nbsp; Recuperar backup</button><button type="button" id="exportBtn">↓ &nbsp; Exportar JSON</button><button type="button" id="importBtn">↑ &nbsp; Importar JSON</button><input type="file" id="importInput" class="file-import-hidden" accept=".json,application/json" aria-label="Importar save JSON"><button type="button" id="resetBtn">↺ &nbsp; Reiniciar cenário</button></div><div class="sidebar-note"><span class="note-mark">!</span><p>Parâmetros abstratos de gameplay. Sem representação de epidemiologia real.</p></div></aside>
 <main class="mainstage"><div class="map-shell"><div class="map-topline"><span class="led-dot"></span> VISUALIZAÇÃO GLOBAL <span class="map-topline-right">18 NAÇÕES · MALHA ABSTRATA</span></div><div class="map-viewport"><svg class="world-svg" id="worldSvg" viewBox="0 0 1600 720" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Mapa interativo do mundo; clique em um dos 18 países destacados"></svg><div class="map-controls"><button type="button" id="zoomIn" title="Zoom +">+</button><button type="button" id="zoomOut" title="Zoom −">−</button><button type="button" id="zoomReset" title="Centralizar">⌖</button></div><div class="map-coordinate" id="zoomLabel">ZOOM 1× · ARRASTE PARA EXPLORAR</div><div class="map-svg-tooltip" id="hoverLabel"></div><div class="map-overlay" id="mapOverlay"><small>01 / ESCOLHA A ORIGEM</small><strong>Clique em um país para começar</strong><span>Depois inicie no painel lateral.</span></div></div><div class="map-footer"><div class="map-legend"><span class="legend-dot base"></span> Inativo <span class="legend-dot low"></span> Inicial <span class="legend-dot medium"></span> Expansão <span class="legend-dot high"></span> Elevado</div><div class="map-footer-right">VISUALIZAÇÃO FICTÍCIA</div></div></div>
 <div class="playback"><div class="playback-title"><span>CONTROLE TEMPORAL</span><strong id="timeLabel">DIA 000</strong></div><div class="playback-buttons"><button type="button" id="openLabQuick" class="lab-quick">⬡ LABORATÓRIO</button><button type="button" class="round-play" id="playBtn" aria-label="Pausar ou continuar">▶</button><button type="button" class="step-btn" id="stepBtn">⏭ &nbsp; PRÓXIMO DIA</button><span class="playback-separator"></span><span class="speed-caption">VELOCIDADE</span><div class="speed-group" id="speedGroup"><button type="button" data-speed="1" class="active">1×</button><button type="button" data-speed="5">5×</button><button type="button" data-speed="20">20×</button></div></div><div class="notification" id="notice" role="status" style="display:none"></div></div>
 <div class="bottom-panels"><div class="trend-shell chart-container"><div class="trend-heading"><span>EVOLUÇÃO DO CENÁRIO</span><span id="trendCaption">00 DIAS</span></div><svg id="trendSvg" class="trend-svg" viewBox="0 0 700 120" preserveAspectRatio="none" role="img" aria-label="Evolução da crise no período"></svg></div><div class="news-shell"><div class="news-header"><span>BOLETIM GLOBAL</span><span id="newsCount" class="news-total">0 EVENTOS</span></div><div class="news-tabs" id="newsTabs"><button type="button" data-tab="all" class="active">TODOS</button><button type="button" data-tab="alerta">ALERTAS</button><button type="button" data-tab="pesquisa">CIÊNCIA</button><button type="button" data-tab="evento">EVENTOS</button></div><div class="news-list" id="newsList"></div></div></div>
@@ -139,7 +152,7 @@
 <div id="eventsList" class="events-timeline"></div><footer class="events-footer">Impactos permanentes ficam no país. Modificadores temporários expiram automaticamente.</footer>
 </section></main>
 <aside class="sidebar right-sidebar"><div class="panel-heading"><span class="heading-square"></span> INTELIGÊNCIA REGIONAL <span class="panel-number">03</span></div><div class="country-panel"><div class="small-label">TERRITÓRIO SELECIONADO</div><h2 class="nation-title" id="nationTitle">—</h2><div id="nationDetail"></div></div><div class="model-note"><div class="model-title">MODELO DE MUNDO</div><p>Os 18 países estão ligados por uma rede ficcional. Selecione um para ver seu perfil e sua resposta.</p><div class="model-stat">18 <span>NAÇÕES</span><span class="slash">/</span> 01 <span>CENÁRIO</span></div></div></aside></div>
-<footer class="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO FICTÍCIA · SEM VALOR PREDITIVO</span><span>V0.9.1 — REBALANCEAMENTO</span></footer></div></div>
+<footer class="page-footer"><span>PROJECT ZERO <b>/</b> EXPERIMENTO DE ESTRATÉGIA</span><span>SIMULAÇÃO FICTÍCIA · SEM VALOR PREDITIVO</span><span>V0.10 — ESTABILIDADE E QUALIDADE</span></footer></div></div>
 
 <div class="tour-backdrop" id="tourBackdrop" style="display:none" aria-hidden="true">
 <section class="tour-modal" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-description" id="tourModal">
@@ -760,6 +773,64 @@ function restoreGame(value) {
     return isGameState(migrated) ? migrated : null;
 }
 
+/** Persistência local sem dependências, sem envio de dados e sem exclusão de saves. */
+const SAVE_KEYS = {
+    manual: 'project-zero-save-v1', // Chave histórica, não modificar.
+    backup: 'project-zero-manual-backup-v010',
+    automatico: 'project-zero-autosave-v010',
+};
+const MAX_IMPORT_BYTES = 2_500_000;
+/** Save externo pode conter versões antigas; valida/migra sem mutar o objeto original. */
+function parseGameJson(raw) {
+    if (typeof raw !== 'string' || raw.length > MAX_IMPORT_BYTES)
+        return { status: 'invalid' };
+    try {
+        const parsed = JSON.parse(raw);
+        const game = restoreGame(parsed);
+        if (!game)
+            return { status: 'invalid' };
+        return { status: 'ok', game, migrated: parsed.version !== 7 };
+    }
+    catch {
+        return { status: 'invalid' };
+    }
+}
+function readSave(storage, slot) {
+    try {
+        const raw = storage.getItem(SAVE_KEYS[slot]);
+        return raw === null ? { status: 'missing' } : parseGameJson(raw);
+    }
+    catch {
+        return { status: 'unavailable' };
+    }
+}
+/** Preserva a cópia anterior válida ANTES de sobrescrever o slot manual. */
+function writeSave(storage, slot, game) {
+    if (restoreGame(game) === null)
+        return { status: 'invalid' };
+    try {
+        const next = JSON.stringify(game);
+        if (next.length > MAX_IMPORT_BYTES)
+            return { status: 'invalid' };
+        if (slot === 'manual') {
+            const former = storage.getItem(SAVE_KEYS.manual);
+            if (former !== null && parseGameJson(former).status === 'ok' && former !== next) {
+                try {
+                    storage.setItem(SAVE_KEYS.backup, former);
+                }
+                catch {
+                    return { status: 'backup-failed' };
+                }
+            }
+        }
+        storage.setItem(SAVE_KEYS[slot], next);
+        return { status: 'ok' };
+    }
+    catch {
+        return { status: 'unavailable' };
+    }
+}
+
 /** Orientações sobre as regras de jogo: sem previsões inventadas ou novas mecânicas. */
 const TUTORIAL_STEPS = [
     { title: 'Prepare o cenário', caption: '01 / CONFIGURAÇÃO', text: 'Escolha um país de origem e o modo de dificuldade na coluna esquerda. A seed identifica a simulação: repetindo a mesma seed e os mesmos atributos, você pode comparar decisões.' },
@@ -873,6 +944,7 @@ let selected='BRA', playing=false, speed=1, timer=null, tab='all', eventFilter='
 const paths=new Map(),nodes=new Map(),links=[];
 let guideAction='lab',decisionMessage='',tourStep=0,tourVisible=false;
 const GUIDE_KEY='project-zero-guide-v08';
+function gameStorage(){try{return window.localStorage;}catch{return {getItem(){throw Error('Sem storage')},setItem(){throw Error('Sem storage')}};}}
 for(const c of COUNTRIES){const option=document.createElement('option');option.value=c.id;option.textContent=c.name;$('originSelect').appendChild(option);}
 for(const mode of ['exploracao','equilibrado','desafio','classico']){const option=document.createElement('option');option.value=mode;option.textContent=MODES[mode].title;$('modeSelect').appendChild(option);}
 function svgEl(tag,props){const el=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(props||{}))el.setAttribute(k,v);return el;}
@@ -949,13 +1021,38 @@ function promptEvolution(){
  if(lastEvolutionPrompt===key)return;
  lastEvolutionPrompt=key;playing=false;restartTimer();message('Dia '+game.day+': +2 pontos. Escolha uma melhoria ou ação tática.');toggleLab(true);
 }
-function restartTimer(){if(timer)clearInterval(timer);timer=null;if(!playing||game.phase!=='running')return;timer=setInterval(()=>{game=advanceDay(game);if(game.phase!=='running'){playing=false;restartTimer();}render();promptEvolution();},speed===1?850:speed===5?170:50);}
+function restartTimer(){if(timer)clearInterval(timer);timer=null;if(!playing||game.phase!=='running')return;timer=setInterval(()=>{game=advanceDay(game);if(game.phase!=='running'){playing=false;restartTimer();}render();if(game.day%10===0 || game.phase!=='running')autosave();promptEvolution();},speed===1?850:speed===5?170:50);}
 $('startBtn').onclick=()=>{game=startGame(game);playing=true;restartTimer();message('Simulação iniciada.');render();};
 $('playBtn').onclick=()=>{if(game.phase!=='running')return;playing=!playing;restartTimer();render();};
-$('stepBtn').onclick=()=>{if(game.phase!=='running')return;playing=false;restartTimer();game=advanceDay(game);render();promptEvolution();};
+$('stepBtn').onclick=()=>{if(game.phase!=='running')return;playing=false;restartTimer();game=advanceDay(game);render();if(game.day%10===0 || game.phase!=='running')autosave();promptEvolution();};
 $('resetBtn').onclick=()=>{if(game.phase!=='setup'&&!confirm('Descartar o progresso não salvo?'))return;playing=false;restartTimer();previousRun=null;seenOutcome=null;lastEvolutionPrompt=null;showOutcome(false);game=createGame(selected,Math.floor(Date.now()%2000000000),game.mode);message('Novo cenário pronto.');render();};
-$('saveBtn').onclick=()=>{try{localStorage.setItem('project-zero-save-v1',JSON.stringify(game));message('Partida salva no navegador.');}catch{message('Falha ao salvar neste navegador.');}};
-$('loadBtn').onclick=()=>{try{const stored=localStorage.getItem('project-zero-save-v1');if(!stored){message('Nenhuma partida salva.');return;}const parsed=JSON.parse(stored);const restored=restoreGame(parsed);if(!restored){message('Save incompatível.');return;}playing=false;restartTimer();previousRun=null;seenOutcome=null;lastEvolutionPrompt=null;showOutcome(false);game=restored;selected=game.origin;message('Partida restaurada.');render();}catch{message('Não foi possível carregar.');}};
+$('saveBtn').onclick=()=>{const result=writeSave(gameStorage(),'manual',game);message(result.status==='ok'?'Save manual gravado. O anterior foi protegido, quando existente.':result.status==='backup-failed'?'Backup indisponível; o save manual anterior foi preservado.':'Falha ao salvar no navegador.');};
+function loadSlot(slot){
+ const result=readSave(gameStorage(),slot);
+ if(result.status!=='ok'){message(result.status==='missing'?'Nenhum save neste slot.':result.status==='invalid'?'Save inválido; use backup ou autosave.':'Armazenamento indisponível.');return;}
+ if(game.phase!=='setup'&&game.day>0&&!confirm('Substituir a partida atual? Exporte-a antes, se desejar.'))return;
+ playing=false;restartTimer();previousRun=null;seenOutcome=null;lastEvolutionPrompt=null;showOutcome(false);
+ game=result.game;selected=game.origin;message('Partida recuperada e pausada no dia '+game.day+'.');render();
+}
+$('loadBtn').onclick=()=>loadSlot('manual');
+$('recoveryBtn').onclick=()=>loadSlot('automatico');
+$('backupBtn').onclick=()=>loadSlot('backup');
+$('exportBtn').onclick=()=>{
+ const blob=new Blob([JSON.stringify(game,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=url;a.download='project-zero-seed-'+game.seed+'-dia-'+game.day+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);message('Arquivo de save exportado.');
+};
+$('importBtn').onclick=()=>$('importInput').click();
+$('importInput').onchange=async e=>{
+ const file=e.target.files&&e.target.files[0];e.target.value='';if(!file)return;
+ if(file.size>MAX_IMPORT_BYTES){message('Save grande demais: máximo 2,5 MB.');return;}
+ try{const result=parseGameJson(await file.text());if(result.status!=='ok'){message('Arquivo inválido. Partida preservada.');return;}
+ if(game.phase!=='setup'&&game.day>0&&!confirm('Substituir a partida atual pelo arquivo?'))return;
+ playing=false;restartTimer();previousRun=null;seenOutcome=null;lastEvolutionPrompt=null;showOutcome(false);game=result.game;selected=game.origin;render();message('Arquivo importado com segurança.');
+ }catch{message('Não foi possível ler o arquivo.');}
+};
+function autosave(){if(game.day>0&&game.phase!=='setup')writeSave(gameStorage(),'automatico',game);}
+window.addEventListener('pagehide',autosave);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autosave();});
 $('originSelect').onchange=e=>selectCountry(e.target.value);
 $('modeSelect').onchange=e=>{game=changeMode(game,e.target.value);render();};
 $('intelRanking').onclick=e=>{const btn=e.target.closest('[data-country]');if(btn)selectCountry(btn.dataset.country);};
@@ -992,9 +1089,9 @@ $('labBackdrop').onmousedown=e=>{if(e.target===$('labBackdrop'))toggleLab(false)
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&labVisible)toggleLab(false);});
 $('labAgentName').oninput=e=>{game=setAgentName(game,e.target.value);};
 $('labAttributes').onclick=e=>{const btn=e.target.closest('[data-attr]');if(!btn||btn.disabled)return;game=adjustAttribute(game,btn.dataset.attr,Number(btn.dataset.delta));renderLab();};
-$('labUpgrades').onclick=e=>{const btn=e.target.closest('[data-upgrade]');if(!btn||btn.disabled)return;const feedback=upgradeFeedback(game,btn.dataset.upgrade);game=buyUpgrade(game,btn.dataset.upgrade);if(feedback){decisionMessage=feedback;message(feedback);}renderLab();render();};
+$('labUpgrades').onclick=e=>{const btn=e.target.closest('[data-upgrade]');if(!btn||btn.disabled)return;const feedback=upgradeFeedback(game,btn.dataset.upgrade);game=buyUpgrade(game,btn.dataset.upgrade);autosave();if(feedback){decisionMessage=feedback;message(feedback);}renderLab();render();};
 $('tacticTarget').onchange=e=>{if(game.phase!=='running'||!COUNTRY_BY_ID[e.target.value])return;selected=e.target.value;renderLab();render();};
-$('tacticGrid').onclick=e=>{const btn=e.target.closest('[data-tactic]');if(!btn||btn.disabled)return;const before=game;game=applyTactic(game,btn.dataset.tactic,selected);const feedback=tacticFeedback(before,game,btn.dataset.tactic,selected);if(feedback){decisionMessage=feedback;message(feedback);}renderLab();render();};
+$('tacticGrid').onclick=e=>{const btn=e.target.closest('[data-tactic]');if(!btn||btn.disabled)return;const before=game;game=applyTactic(game,btn.dataset.tactic,selected);autosave();const feedback=tacticFeedback(before,game,btn.dataset.tactic,selected);if(feedback){decisionMessage=feedback;message(feedback);}renderLab();render();};
 
 const resultBackdrop=document.createElement('div');
 resultBackdrop.id='resultBackdrop';resultBackdrop.className='result-backdrop';resultBackdrop.style.display='none';document.body.appendChild(resultBackdrop);
@@ -1003,7 +1100,7 @@ function showOutcome(visible){
  const current=summarizeRun(game);if(!current)return;
  const milestones=buildMilestones(game),victory=current.outcome==='overwhelmed',same=comparableRuns(previousRun,current);
  resultBackdrop.innerHTML=`<section class="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title">
- <header class="result-topline"><span>PROJECT ZERO / RELATÓRIO DE MISSÃO <b>V0.9.1</b></span><button class="result-close" type="button" data-outcome-action="close" aria-label="Fechar resultado">✕</button></header>
+ <header class="result-topline"><span>PROJECT ZERO / RELATÓRIO DE MISSÃO <b>V0.10.0</b></span><button class="result-close" type="button" data-outcome-action="close" aria-label="Fechar resultado">✕</button></header>
  <div class="result-hero ${victory?'result-success':'result-containment'}"><span class="result-eyebrow">CENÁRIO ENCERRADO · DIA ${current.day} · SEED #${current.seed}</span><h2 id="result-title">${victory?'Limite crítico atingido.':'Contenção científica concluída.'}</h2><p>${victory?'O cenário ultrapassou 70% de impacto antes da conclusão da pesquisa científica.':'A pesquisa global atingiu a meta de '+current.researchGoal+'% antes do limite crítico.'}</p><span class="result-origin">${COUNTRY_BY_ID[current.origin].flag} Origem: ${esc(COUNTRY_BY_ID[current.origin].name)} · ${esc(MODES[current.mode].title)}</span></div>
  <div class="result-scroll"><div class="result-kpis"><div><span>DIAS DE PARTIDA</span><strong>${current.day}</strong></div><div><span>POPULAÇÃO IMPACTADA</span><strong>${pct(current.affectedPct)}</strong></div><div><span>PESQUISA GLOBAL</span><strong>${pct(current.research)}</strong></div><div><span>EVOLUÇÕES / GASTO TÁTICO</span><strong>${current.upgrades} / ${current.tacticsSpent} PT</strong></div></div>
  <div class="result-section-title"><h3>Diagnóstico estratégico</h3><span>MODO ${esc(MODES[current.mode].title.toUpperCase())}</span></div>

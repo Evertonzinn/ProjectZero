@@ -115,3 +115,16 @@
 .tour-primary:hover{background:#e0ffba}
 @media(max-width:650px){.tour-content{padding:28px 24px 25px;min-height:290px}.tour-top{padding:13px 17px}.tour-actions{padding:14px 16px;justify-content:center}.tour-actions button{flex:1;min-width:120px}.help-button{padding:7px;font-size:9px}}
 @media(prefers-reduced-motion:reduce){.tour-backdrop{backdrop-filter:none}}
+
+/* v0.10 — controle de teclado e arquivo JSON */
+.file-import-hidden{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}
+button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid #c5ef91!important;outline-offset:3px!important}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;scroll-behavior:auto!important}}
+@media(max-width:730px){
+  /* Os controles de recuperação não podem desaparecer em telas estreitas. */
+  .left-sidebar>.panel-heading.secondary{display:flex;grid-row:4;margin-top:0}
+  .left-sidebar>.quick-panel{display:block;grid-row:5}
+  .mainstage{grid-row:3}
+  .right-sidebar{grid-row:6}
+  .quick-panel button{min-height:44px}
+}

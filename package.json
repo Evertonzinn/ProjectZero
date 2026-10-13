@@ -1,6 +1,6 @@
 {
   "name": "project-zero-map",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +13,9 @@
     "test:bots": "tsc -p tsconfig.engine.json && node --test tests/bots.test.mjs",
     "benchmark:all": "npm run benchmark && npm run benchmark:bots",
     "benchmark:compare": "tsc -p tsconfig.engine.json && node scripts/compare-rulesets.mjs",
-    "report:balance": "tsc -p tsconfig.engine.json && node scripts/compare-rulesets.mjs"
+    "report:balance": "tsc -p tsconfig.engine.json && node scripts/compare-rulesets.mjs",
+    "test:persistence": "tsc -p tsconfig.engine.json && node --test tests/persistence.test.mjs",
+    "test:quality": "tsc -p tsconfig.engine.json && node --test tests/engine.test.mjs tests/bots.test.mjs tests/persistence.test.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",

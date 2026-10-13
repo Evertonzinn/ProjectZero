@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useDialogFocus } from './useDialogFocus';
+import { useRef } from 'react';
 import { ATTRIBUTE_BUDGET, ATTRIBUTE_IDS, ATTRIBUTE_MAX, ATTRIBUTES, UPGRADES, freeAttributePoints } from '../engine/laboratory';
 import type { AttributeId, UpgradeId } from '../engine/laboratory';
 import { availableTactic, availableUpgrade, getLabModifiers, getTacticCost } from '../engine/simulation';
@@ -21,23 +22,18 @@ interface Props {
 }
 
 export function Laboratory({game,feedback,selected,onSelect,onTactic,onClose,onName,onAttribute,onPurchase}:Props) {
-  const closeRef=useRef<HTMLButtonElement>(null);
+  const modalRef=useRef<HTMLElement>(null);
+  useDialogFocus(modalRef,onClose);
   const setup=game.phase==='setup';
   const free=freeAttributePoints(game.agent.attributes);
   const modifiers=getLabModifiers(game);
   const affordableUpgrades=UPGRADES.filter(u=>availableUpgrade(game,u.id).ok).length;
   const affordableTactics=TACTICS.filter(t=>availableTactic(game,t.id,selected).ok).length;
-  useEffect(()=>{
-    closeRef.current?.focus();
-    const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose();};
-    window.addEventListener('keydown',onKey);
-    return ()=>window.removeEventListener('keydown',onKey);
-  },[]);
   return <div className="lab-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <section className="lab-modal" role="dialog" aria-modal="true" aria-labelledby="labTitle">
+    <section ref={modalRef} tabIndex={-1} className="lab-modal" role="dialog" aria-modal="true" aria-labelledby="labTitle">
       <header className="lab-header">
         <div className="lab-heading"><div className="lab-glyph">⬡</div><div><span className="lab-eyebrow">PROJECT ZERO / MÓDULO 02</span><h2 id="labTitle">Laboratório <em>Zero</em></h2><p>Configure seu protocolo ficcional e escolha como o cenário evolui.</p></div></div>
-        <button className="lab-close" ref={closeRef} type="button" aria-label="Fechar laboratório" onClick={onClose}>✕</button>
+        <button className="lab-close" type="button" aria-label="Fechar laboratório" onClick={onClose}>✕</button>
       </header>
       <div className="lab-body">
         <div className="lab-config">
