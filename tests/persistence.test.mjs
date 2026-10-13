@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createGame, startGame, advanceDay, restoreGame} from '../.engine-build/engine/simulation.js';
+import {COUNTRIES} from '../.engine-build/data/countries.js';
 import {SAVE_KEYS, readSave, writeSave, parseGameJson, MAX_IMPORT_BYTES} from '../.engine-build/engine/persistence.js';
 
 function storage(initial = {}) {
@@ -71,7 +72,7 @@ test('PZ-01: importação rejeita nomes herdados, tipos inválidos e preserva pa
    const legacy={...altered,version:6};
    assert.equal(parseGameJson(JSON.stringify(legacy)).status,'invalid','save legado: '+String(origin));
  }
- for(const origin of ['BRA','JPN','DEU']){
+ for(const {id:origin} of COUNTRIES){
    const candidate={...valid,origin};
    assert.equal(parseGameJson(JSON.stringify(candidate)).status,'ok',origin);
  }
