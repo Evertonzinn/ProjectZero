@@ -14,9 +14,10 @@ export interface WorldMapProps {
   game: GameState;
   selected: string;
   onSelect: (id:string)=>void;
+  effectsEnabled?: boolean;
 }
 
-export function WorldMap({game,selected,onSelect}:WorldMapProps) {
+export function WorldMap({game,selected,onSelect,effectsEnabled=true}:WorldMapProps) {
   const [zoom,setZoom]=useState(1);
   const [center,setCenter]=useState<[number,number]>([WIDTH/2,HEIGHT/2]);
   const [hovered,setHovered]=useState<string|null>(null);
@@ -62,7 +63,7 @@ export function WorldMap({game,selected,onSelect}:WorldMapProps) {
   const lines=COUNTRIES.flatMap(country=>country.links.filter(id=>country.id<id && COUNTRY_BY_ID[id]).map(id=>[country.id,id] as const));
 
   return (
-    <div className="map-shell">
+    <div className={`map-shell ${effectsEnabled?'map-immersive':'map-static'}`}>
       <div className="map-topline"><span className="led-dot"/> VISUALIZAÇÃO GLOBAL <span className="map-topline-right">18 REGIÕES MONITORADAS · MALHA ABSTRATA</span></div>
       <div className="map-viewport">
         <svg
@@ -117,7 +118,7 @@ export function WorldMap({game,selected,onSelect}:WorldMapProps) {
               const active=game.countries[from].affected>0 && game.countries[to].affected>0;
               const midX=(a[0]+b[0])/2;
               const midY=(a[1]+b[1])/2-Math.min(90,Math.abs(a[0]-b[0])*.12);
-              return <path key={`${from}-${to}`} d={`M${a[0]},${a[1]}Q${midX},${midY} ${b[0]},${b[1]}`} stroke={active?'#e7a56e':'#5b91ab'} strokeWidth={active?1.7:.75} opacity={active?.62:.15}/>;
+              return <path key={`${from}-${to}`} d={`M${a[0]},${a[1]}Q${midX},${midY} ${b[0]},${b[1]}`} className={active&&effectsEnabled?'route-active':''} stroke={active?'#e7a56e':'#5b91ab'} strokeWidth={active?1.7:.75} opacity={active?.62:.15}/>;
             })}
           </g>
           <g pointerEvents="none">
@@ -129,8 +130,9 @@ export function WorldMap({game,selected,onSelect}:WorldMapProps) {
               const worldEvent=game.globalEvents.some(e=>e.countryId===country.id&&game.day<e.expiresDay);
               return <g key={country.id} transform={`translate(${px} ${py})`}>
                 {active&&<circle r={16} fill="#eb7d67" opacity=".28" filter="url(#glow)"/>}
-                {active&&<circle r={10} fill="none" stroke="#ff9e80" strokeOpacity=".6" strokeWidth=".9" className="map-pulse"/>}
+                {active&&effectsEnabled&&<circle r={10} fill="none" stroke="#ff9e80" strokeOpacity=".6" strokeWidth=".9" className="map-pulse"/>}
                 {worldEvent&&<circle r={22} fill="none" stroke="#89d3ec" opacity=".92" strokeWidth="1.7" strokeDasharray="4 5"/>}
+                {chosen&&effectsEnabled&&<circle r={24} fill="none" stroke="#b7f56b" strokeOpacity=".38" strokeWidth="1" className="selected-halo"/>}
                 {chosen&&<circle r={16} fill="none" stroke="#b7f56b" strokeWidth="1.4" strokeDasharray="3 4"/>}
                 <circle r={chosen?5.4:active?4.3:3.2} fill={active?'#ffa07e':chosen?'#baf675':'#7fb7d1'} stroke="#0d1a26" strokeWidth="1.6"/>
                 {game.origin===country.id&&<path d={originMarker} fill="none" stroke="#caff80" opacity=".95" strokeWidth="1.4" transform="translate(0,-14) scale(.75)"/>}

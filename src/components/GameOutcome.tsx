@@ -28,7 +28,7 @@ export function GameOutcome({game,previous,onClose,onRepeat,onNew}:Props) {
   const modifiers=getLabModifiers(game);
   return <div className="result-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
     <section ref={modalRef} tabIndex={-1} className="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title">
-      <header className="result-topline"><span>PROJECT ZERO / RELATÓRIO DE MISSÃO <b>V0.10</b></span><button className="result-close" type="button" onClick={onClose} aria-label="Fechar resultado">✕</button></header>
+      <header className="result-topline"><span>PROJECT ZERO / RELATÓRIO DE MISSÃO <b>V0.11</b></span><button className="result-close" type="button" onClick={onClose} aria-label="Fechar resultado">✕</button></header>
       <div className={`result-hero ${victory?'result-success':'result-containment'}`}>
         <span className="result-eyebrow">CENÁRIO ENCERRADO · DIA {current.day} · SEED #{current.seed} · REGRAS {current.ruleset.toUpperCase()}</span>
         <h2 id="result-title">{victory?'Limite crítico atingido.':'Contenção científica concluída.'}</h2>
