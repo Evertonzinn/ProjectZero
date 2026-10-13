@@ -11,7 +11,8 @@ function initialPreferences(): ImmersionPreferences {
 }
 function contextConstructor() {
   const audioWindow=window as Window & {webkitAudioContext?:typeof AudioContext};
-  return audioWindow.AudioContext || audioWindow.webkitAudioContext;
+  // AudioContext é um construtor global no DOM, não uma propriedade tipada de Window.
+  return typeof AudioContext !== 'undefined' ? AudioContext : audioWindow.webkitAudioContext;
 }
 export function useImmersion() {
   const [preferences,setPreferences]=useState(initialPreferences);
