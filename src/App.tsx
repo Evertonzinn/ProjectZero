@@ -15,7 +15,7 @@ import type { RunSummary } from './engine/outcome';
 import type { AttributeId, UpgradeId } from './engine/laboratory';
 import type { TacticId } from './engine/tactics';
 import { COUNTRIES, COUNTRY_BY_ID } from './data/countries';
-import { adjustAttribute, advanceDay, applyTactic, buyUpgrade, changeMode, changeOrigin, createGame, getWorldStats, restoreGame, setAgentName, startGame } from './engine/simulation';
+import { adjustAttribute, advanceDay, applyTactic, buyUpgrade, changeMode, changeOrigin, createGame, getWorldStats, setAgentName, startGame } from './engine/simulation';
 import type { GameState, Policy } from './engine/simulation';
 import { DEFAULT_MODE, MODES } from './engine/balance';
 import type { GameMode } from './engine/balance';
