@@ -160,3 +160,12 @@ button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-v
  .topbar .immersion-toggle{min-height:35px;white-space:nowrap}
 }
 @media(max-width:355px){.topbar{padding:9px 10px}.topbar .immersion-toggle{font-size:8px;padding:5px}.topbar .help-button{font-size:8px;padding:6px}}
+
+/* PZ-02: aviso de falha persistente, separado das mensagens temporárias. */
+.autosave-alert{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:10px;padding:14px;border:1px solid #c18a52;border-radius:8px;background:#34291e;color:#f9e9c4}
+.autosave-alert strong{display:block;font-size:12px;letter-spacing:.3px}
+.autosave-alert p{margin:6px 0;font-size:12px;line-height:1.5;color:#f0d8ae}
+.autosave-alert small{display:block;color:#e3c498;font-size:11px}
+.autosave-actions{display:flex;flex-wrap:wrap;gap:8px}
+.autosave-actions button{border:1px solid #c69f69;border-radius:6px;background:#483923;color:#f6e7c7;font-size:10px;font-weight:800;min-height:44px;padding:9px 12px;cursor:pointer}
+.autosave-actions button:hover,.autosave-actions button:focus-visible{background:#5b462d}

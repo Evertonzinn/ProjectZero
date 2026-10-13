@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createGame, startGame, advanceDay, restoreGame} from '../.engine-build/engine/simulation.js';
+import {COUNTRIES} from '../.engine-build/data/countries.js';
 import {SAVE_KEYS, readSave, writeSave, parseGameJson, MAX_IMPORT_BYTES} from '../.engine-build/engine/persistence.js';
 
 function storage(initial = {}) {
@@ -60,4 +61,21 @@ test('autosave grava fase encerrada e restaura sem alterar o resultado',()=>{
  let g=run();for(let i=0;i<400&&g.phase==='running';i++)g=advanceDay(g);
  const st=storage();assert.equal(writeSave(st,'automatico',g).status,'ok');
  const x=readSave(st,'automatico');assert.equal(x.status,'ok');assert.equal(x.game.phase,g.phase);
+});
+
+test('PZ-01: importação rejeita nomes herdados, tipos inválidos e preserva partidas legítimas',()=>{
+ const valid=run();
+ for(const origin of ['constructor','__proto__','toString','XYZ',null,[],{},12]){
+   const altered={...valid,origin};
+   assert.equal(parseGameJson(JSON.stringify(altered)).status,'invalid',String(origin));
+   assert.equal(restoreGame(altered),null,String(origin));
+   const legacy={...altered,version:6};
+   assert.equal(parseGameJson(JSON.stringify(legacy)).status,'invalid','save legado: '+String(origin));
+ }
+ for(const {id:origin} of COUNTRIES){
+   const candidate={...valid,origin};
+   assert.equal(parseGameJson(JSON.stringify(candidate)).status,'ok',origin);
+ }
+ assert.throws(()=>createGame('constructor',123));
+ assert.throws(()=>createGame('__proto__',123));
 });

@@ -247,7 +247,27 @@ $('importInput').onchange=async e=>{
  playing=false;restartTimer();previousRun=null;seenOutcome=null;lastEvolutionPrompt=null;showOutcome(false);game=result.game;selected=game.origin;render();message('Arquivo importado com segurança.');
  }catch{message('Não foi possível ler o arquivo.');}
 };
-function autosave(){if(game.day>0&&game.phase!=='setup')writeSave(gameStorage(),'automatico',game);}
+let lastAutosaveDay=null;
+const autosaveAlert=document.createElement('div');
+autosaveAlert.className='autosave-alert';
+autosaveAlert.setAttribute('role','alert');
+autosaveAlert.style.display='none';
+autosaveAlert.innerHTML='<div><strong>Autosave não confirmado</strong><p id="autosaveErrorText"></p><small id="autosaveLastOk"></small></div><div class="autosave-actions"><button type="button" id="autosaveRetry">TENTAR NOVAMENTE</button><button type="button" id="autosaveExport">EXPORTAR JSON</button></div>';
+$('notice').insertAdjacentElement('afterend',autosaveAlert);
+$('autosaveRetry').onclick=()=>autosave();
+$('autosaveExport').onclick=()=>$('exportBtn').click();
+function autosave(){
+ if(game.day===0||game.phase==='setup')return;
+ const result=writeSave(gameStorage(),'automatico',game);
+ if(result.status==='ok'){
+   lastAutosaveDay={seed:game.seed,day:game.day};
+   autosaveAlert.style.display='none';
+   return;
+ }
+ $('autosaveErrorText').textContent=(result.status==='invalid'?'O estado da partida não pôde ser validado.':'Armazenamento bloqueado ou cheio.')+' O progresso recente pode não estar protegido.';
+ $('autosaveLastOk').textContent=lastAutosaveDay?.seed===game.seed?'Última gravação confirmada nesta aba: dia '+lastAutosaveDay.day+'.':'Nenhuma gravação automática confirmada nesta sessão.';
+ autosaveAlert.style.display='flex';
+}
 window.addEventListener('pagehide',autosave);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autosave();});
 $('originSelect').onchange=e=>selectCountry(e.target.value);
