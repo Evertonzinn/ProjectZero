@@ -1177,27 +1177,110 @@ $('importInput').onchange=async e=>{
  playing=false;restartTimer();previousRun=null;seenOutcome=null;lastEvolutionPrompt=null;showOutcome(false);game=result.game;selected=game.origin;render();message('Arquivo importado com segurança.');
  }catch{message('Não foi possível ler o arquivo.');}
 };
+/** Exclusão entre abas para o slot automático. Não altera o formato GameState v7. */
+const AUTOSAVE_OWNER_KEY = 'project-zero-autosave-owner-v011';
+const AUTOSAVE_LOCK_NAME = 'project-zero-autosave-exclusive-v011';
+const AUTOSAVE_LEASE_MS = 45_000;
+/** IDs de sessão só distinguem abas; não são autenticação nem credenciais. */
+function newAutosaveSessionId() {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+        return crypto.randomUUID();
+    return `tab-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+function parseAutosaveOwner(raw) {
+    if (raw === null || raw.length > 400)
+        return null;
+    try {
+        const value = JSON.parse(raw);
+        if (!value || typeof value !== 'object')
+            return null;
+        const entry = value;
+        if (typeof entry.owner !== 'string' || entry.owner.length < 1 || entry.owner.length > 128 ||
+            !Number.isSafeInteger(entry.expiresAt) || (entry.expiresAt ?? -1) < 0)
+            return null;
+        return { owner: entry.owner, expiresAt: entry.expiresAt };
+    }
+    catch {
+        return null;
+    }
+}
+/**
+ * Executar sob Web Locks quando disponível. Em HTTP sem Web Locks, a lease
+ * detecta conflitos, mas a verificação/gravação no localStorage não é atômica.
+ */
+function saveAutosaveWithLease(storage, game, sessionId, takeover = false, now = Date.now()) {
+    if (typeof sessionId !== 'string' || sessionId.length < 1 || sessionId.length > 128 ||
+        !Number.isSafeInteger(now) || restoreGame(game) === null)
+        return { status: 'invalid' };
+    try {
+        const raw = storage.getItem(AUTOSAVE_OWNER_KEY);
+        if (raw !== null) {
+            const current = parseAutosaveOwner(raw);
+            // Metadata danificada: não substituir silenciosamente o checkpoint.
+            if (!current)
+                return { status: 'conflict' };
+            if (!takeover && current.owner !== sessionId && current.expiresAt > now)
+                return { status: 'conflict' };
+        }
+        storage.setItem(AUTOSAVE_OWNER_KEY, JSON.stringify({ owner: sessionId, expiresAt: now + AUTOSAVE_LEASE_MS }));
+        return writeSave(storage, 'automatico', game);
+    }
+    catch {
+        return { status: 'unavailable' };
+    }
+}
+/** Web Locks serializa o read-check-write entre abas no contexto seguro. */
+async function coordinatedAutosave(storage, game, sessionId, takeover = false) {
+    if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+        try {
+            return await navigator.locks.request(AUTOSAVE_LOCK_NAME, () => saveAutosaveWithLease(storage, game, sessionId, takeover));
+        }
+        catch {
+            return { status: 'unavailable' };
+        }
+    }
+    return saveAutosaveWithLease(storage, game, sessionId, takeover);
+}
 let lastAutosaveDay=null;
+let previewAutosaveBusy=false;
+const previewSession=newAutosaveSessionId();
 const autosaveAlert=document.createElement('div');
 autosaveAlert.className='autosave-alert';
 autosaveAlert.setAttribute('role','alert');
 autosaveAlert.style.display='none';
-autosaveAlert.innerHTML='<div><strong>Autosave não confirmado</strong><p id="autosaveErrorText"></p><small id="autosaveLastOk"></small></div><div class="autosave-actions"><button type="button" id="autosaveRetry">TENTAR NOVAMENTE</button><button type="button" id="autosaveExport">EXPORTAR JSON</button></div>';
+autosaveAlert.innerHTML='<div><strong>Autosave não confirmado</strong><p id="autosaveErrorText"></p><small id="autosaveLastOk"></small></div><div class="autosave-actions"><button type="button" id="autosaveRetry">TENTAR NOVAMENTE</button><button type="button" id="autosaveTakeover" style="display:none">ASSUMIR NESTA ABA</button><button type="button" id="autosaveExport">EXPORTAR JSON</button></div>';
 $('notice').insertAdjacentElement('afterend',autosaveAlert);
-$('autosaveRetry').onclick=()=>autosave();
+$('autosaveRetry').onclick=()=>{void autosave();};
+$('autosaveTakeover').onclick=()=>{if(confirm('Outra aba controla o autosave. Assumir aqui pode sobrescrever o checkpoint anterior. Exporte seu progresso antes, se desejar preservá-lo. Continuar?'))void autosave(true);};
 $('autosaveExport').onclick=()=>$('exportBtn').click();
-function autosave(){
- if(game.day===0||game.phase==='setup')return;
- const result=writeSave(gameStorage(),'automatico',game);
- if(result.status==='ok'){
-   lastAutosaveDay={seed:game.seed,day:game.day};
-   autosaveAlert.style.display='none';
-   return;
- }
- $('autosaveErrorText').textContent=(result.status==='invalid'?'O estado da partida não pôde ser validado.':'Armazenamento bloqueado ou cheio.')+' O progresso recente pode não estar protegido.';
+function autosaveWarning(message,conflict){
+ if(conflict){playing=false;restartTimer();}
+ $('autosaveErrorText').textContent=message+' O progresso recente pode não estar protegido.';
  $('autosaveLastOk').textContent=lastAutosaveDay?.seed===game.seed?'Última gravação confirmada nesta aba: dia '+lastAutosaveDay.day+'.':'Nenhuma gravação automática confirmada nesta sessão.';
+ $('autosaveTakeover').style.display=conflict?'inline-flex':'none';
  autosaveAlert.style.display='flex';
 }
+async function autosave(takeover=false){
+ if(game.day===0||game.phase==='setup'||previewAutosaveBusy)return;
+ previewAutosaveBusy=true;
+ try{
+   const result=await coordinatedAutosave(gameStorage(),game,previewSession,takeover);
+   if(result.status==='ok'){
+     lastAutosaveDay={seed:game.seed,day:game.day};
+     autosaveAlert.style.display='none';
+     return;
+   }
+   if(result.status==='conflict')autosaveWarning('Outra aba controla o autosave. Esta sessão foi pausada.',true);
+   else autosaveWarning(result.status==='invalid'?'O estado da partida não pôde ser validado.':'Armazenamento bloqueado ou cheio.',false);
+ }finally{previewAutosaveBusy=false;}
+}
+setInterval(()=>{if(game.day>0&&game.phase!=='setup')void autosave();},15000);
+window.addEventListener('storage',e=>{
+ if(e.key!==AUTOSAVE_OWNER_KEY)return;
+ const owner=parseAutosaveOwner(e.newValue);
+ if(owner&&owner.owner!==previewSession&&owner.expiresAt>Date.now())
+   autosaveWarning('Outra aba assumiu o autosave. Esta sessão foi pausada.',true);
+});
 window.addEventListener('pagehide',autosave);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autosave();});
 $('originSelect').onchange=e=>selectCountry(e.target.value);
